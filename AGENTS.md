@@ -2,9 +2,7 @@
 
 ## Goal
 
-Build a small, server-first web application with strong systemic protections and minimal tooling.
-
-Prefer platform capabilities over framework layers. Add dependencies only when they materially improve safety, correctness, or developer experience.
+Build a server-first web application with strong systemic protections.
 
 ## Stack
 
@@ -357,8 +355,6 @@ Treat raw HTML rendering as a privileged operation.
 
 ## Project Shape
 
-Start small.
-
 ```text
 src/
   main.ts
@@ -382,10 +378,6 @@ migrations/
 deno.json
 deno.lock
 ```
-
-Do not create layers or directories before they solve a real organisational problem.
-
-Prefer a few larger coherent modules over premature abstraction.
 
 ---
 
@@ -439,4 +431,3 @@ Avoid:
 - security controls that depend on developer memory
 
 The desired result is a system where the easiest way to write application code is also the safe and architecturally correct way.
-
