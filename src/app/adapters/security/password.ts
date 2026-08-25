@@ -1,0 +1,51 @@
+const encoder = new TextEncoder();
+const parameters = { name: 'Argon2id', memory: 65536, iterations: 3, parallelism: 1 } as const;
+
+function b64(bytes: Uint8Array): string {
+  return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll(
+    '=',
+    '',
+  );
+}
+function unb64(value: string): Uint8Array {
+  const padded = value.replaceAll('-', '+').replaceAll('_', '/') +
+    '='.repeat((4 - value.length % 4) % 4);
+  return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
+}
+export function parsePhc(value: string): { salt: Uint8Array; hash: Uint8Array } | undefined {
+  const m = /^\$argon2id\$v=19\$m=(\d+),t=(\d+),p=(\d+)\$([A-Za-z0-9_-]+)\$([A-Za-z0-9_-]+)$/u.exec(
+    value,
+  );
+  if (!m || m[1] !== '65536' || m[2] !== '3' || m[3] !== '1') return undefined;
+  try {
+    const salt = unb64(m[4]);
+    const hash = unb64(m[5]);
+    return salt.length === 16 && hash.length === 32 ? { salt, hash } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+async function derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'Argon2id', false, [
+    'deriveBits',
+  ]);
+  const saltCopy = new ArrayBuffer(salt.byteLength);
+  new Uint8Array(saltCopy).set(salt);
+  return new Uint8Array(
+    await crypto.subtle.deriveBits({ ...parameters, salt: saltCopy }, key, 256),
+  );
+}
+export async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  return `$argon2id$v=19$m=65536,t=3,p=1$${b64(salt)}$${b64(await derive(password, salt))}`;
+}
+export async function verifyPassword(password: string, phc: string): Promise<boolean> {
+  const parsed = parsePhc(phc);
+  if (!parsed) return false;
+  const actual = await derive(password, parsed.salt);
+  let difference = actual.length ^ parsed.hash.length;
+  for (let index = 0; index < Math.max(actual.length, parsed.hash.length); index++) {
+    difference |= (actual[index] ?? 0) ^ (parsed.hash[index] ?? 0);
+  }
+  return difference === 0;
+}

@@ -1,0 +1,13 @@
+name: CI
+on: [push, pull_request]
+jobs:
+  deno:
+    strategy: { matrix: { os: [ubuntu-latest, macos-latest] } }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - run: nix develop -c deno fmt --check
+      - run: nix develop -c deno lint
+      - run: nix develop -c deno check src/app/main.tsx
+      - run: nix develop -c deno test

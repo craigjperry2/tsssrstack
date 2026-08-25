@@ -1,0 +1,282 @@
+import { type Context, Hono, type Next } from 'hono';
+import { csrf } from 'hono/csrf';
+import { deleteCookie, getSignedCookie, setSignedCookie } from 'hono/cookie';
+import { secureHeaders } from 'hono/secure-headers';
+import { serveStatic } from 'hono/deno';
+import { streamSSE } from 'hono/streaming';
+import { type Child } from 'hono/jsx';
+import { loadConfig } from './config.ts';
+import { normalizeEmail, taskInput, validatePassword, validEmail } from './domain/validation.ts';
+import { hashPassword, verifyPassword } from './adapters/security/password.ts';
+import { createSql } from './adapters/persistence/client.ts';
+import { tasks, type User, users } from './adapters/persistence/repositories.ts';
+import { Layout } from './adapters/web/views/layout.tsx';
+import { App, appSqids } from './adapters/web/views/app.tsx';
+import { Auth } from './adapters/web/views/auth.tsx';
+
+type Variables = { user?: User; requestId: string };
+type Session = { userId: number; sessionVersion: number; issuedAt: number; expiresAt: number };
+const config = loadConfig();
+const sql = createSql(config);
+const userRepo = users(sql);
+const taskRepo = tasks(sql);
+const app = new Hono<{ Variables: Variables }>();
+const cookieName = 'app_session';
+const sessionLifetime = 60 * 60 * 12;
+const dummyHash =
+  '$argon2id$v=19$m=65536,t=3,p=1$MDEyMzQ1Njc4OWFiY2RlZg$6VcbVD4_7DRhmJYF2BLo1MoROci40oH3Yx4kqPFSRo0';
+const encode = (value: Session) =>
+  btoa(JSON.stringify(value)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+function decode(value: string): Session | undefined {
+  try {
+    const object = JSON.parse(
+      atob(
+        value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - value.length % 4) % 4),
+      ),
+    ) as Session;
+    return Number.isSafeInteger(object.userId) && Number.isSafeInteger(object.sessionVersion) &&
+        Number.isSafeInteger(object.issuedAt) && Number.isSafeInteger(object.expiresAt)
+      ? object
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+function cookieOptions() {
+  return {
+    httpOnly: true,
+    sameSite: 'Lax' as const,
+    path: '/',
+    maxAge: sessionLifetime,
+    expires: new Date(Date.now() + sessionLifetime * 1000),
+    secure: config.env === 'production',
+  };
+}
+async function issue(c: Parameters<typeof setSignedCookie>[0], user: User) {
+  const now = Math.floor(Date.now() / 1000);
+  await setSignedCookie(
+    c,
+    cookieName,
+    encode({
+      userId: user.id,
+      sessionVersion: user.session_version,
+      issuedAt: now,
+      expiresAt: now + sessionLifetime,
+    }),
+    config.sessionSecret,
+    cookieOptions(),
+  );
+}
+type AppContext = Context<{ Variables: Variables }>;
+function page(
+  c: AppContext,
+  title: string,
+  body: Child,
+) {
+  return c.html(<Layout title={title}>{body}</Layout>);
+}
+function idFrom(raw: string): number | undefined {
+  try {
+    const decoded = appSqids.decode(raw);
+    return decoded.length === 1 && Number.isSafeInteger(decoded[0]) ? decoded[0] : undefined;
+  } catch {
+    return undefined;
+  }
+}
+async function form(
+  c: { req: { parseBody: () => Promise<Record<string, string | File>> } },
+): Promise<Record<string, string>> {
+  const data = await c.req.parseBody();
+  return Object.fromEntries(
+    Object.entries(data).map(([key, value]) => [key, typeof value === 'string' ? value : '']),
+  );
+}
+async function taskMorph(
+  c: AppContext,
+  user: User,
+  values: { title?: string; description?: string } = {},
+  errors: Record<string, string> = {},
+) {
+  const element = await (
+    <App
+      email={user.email_normalized}
+      items={await taskRepo.list(user.id)}
+      values={values}
+      errors={errors}
+    />
+  );
+  c.header('Cache-Control', 'no-cache');
+  c.header('X-Accel-Buffering', 'no');
+  c.header('Vary', 'Accept-Encoding');
+  return streamSSE(c, async (stream) => {
+    // Hono prefixes every physical data line, preserving valid SSE framing for
+    // multiline JSX while Datastar receives the required `elements <html>` payload.
+    await stream.writeSSE({ event: 'datastar-patch-elements', data: `elements ${element}` });
+  });
+}
+
+app.use('*', async (c, next) => {
+  c.set('requestId', c.req.header('X-Request-ID') ?? crypto.randomUUID());
+  await next();
+  c.header('X-Request-ID', c.get('requestId'));
+});
+app.use(
+  '*',
+  secureHeaders({
+    contentSecurityPolicy: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-eval'"],
+      styleSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'none'"],
+      frameAncestors: ["'none'"],
+      formAction: ["'self'"],
+    },
+    referrerPolicy: 'strict-origin-when-cross-origin',
+    xContentTypeOptions: 'nosniff',
+    permissionsPolicy: { camera: [], microphone: [], geolocation: [] },
+  }),
+);
+app.use('*', csrf({ origin: config.appOrigin }));
+app.use('*', async (c, next) => {
+  const signed = await getSignedCookie(c, config.sessionSecret, cookieName);
+  if (typeof signed === 'string') {
+    const session = decode(signed);
+    if (session && session.expiresAt > Math.floor(Date.now() / 1000)) {
+      const user = await userRepo.byId(session.userId);
+      if (user && user.session_version === session.sessionVersion) c.set('user', user);
+    }
+  }
+  await next();
+});
+app.use('/static/*', serveStatic({ root: './src/app/static' }));
+const protectedRoute = async (c: AppContext, next: Next) => {
+  if (!c.get('user')) return c.redirect('/login');
+  await next();
+};
+
+app.get('/', (c) => c.redirect(c.get('user') ? '/tasks' : '/login'));
+app.get('/healthz', (c) => c.text('ok'));
+app.get('/readyz', async (c) => {
+  try {
+    await sql`SELECT 1`;
+    return c.text('ready');
+  } catch {
+    return c.text('unavailable', 503);
+  }
+});
+app.get(
+  '/register',
+  (c) => c.get('user') ? c.redirect('/tasks') : page(c, 'Register', <Auth mode='register' />),
+);
+app.post('/register', async (c) => {
+  const data = await form(c);
+  const email = normalizeEmail(data.email ?? '');
+  const password = data.password ?? '';
+  const invalid = !validEmail(email)
+    ? 'Enter a valid email address.'
+    : validatePassword(password, email);
+  if (invalid) return page(c, 'Register', <Auth mode='register' error={invalid} />);
+  try {
+    const user = await userRepo.create(email, await hashPassword(password));
+    await issue(c, user);
+    return c.redirect('/tasks', 303);
+  } catch {
+    return page(c, 'Register', <Auth mode='register' error='Unable to create that account.' />);
+  }
+});
+app.get(
+  '/login',
+  (c) => c.get('user') ? c.redirect('/tasks') : page(c, 'Login', <Auth mode='login' />),
+);
+app.post('/login', async (c) => {
+  const data = await form(c);
+  const user = await userRepo.byEmail(normalizeEmail(data.email ?? ''));
+  const ok = await verifyPassword(data.password ?? '', user?.password_hash ?? dummyHash);
+  if (!user || !ok) {
+    return page(c, 'Login', <Auth mode='login' error='Invalid email or password.' />);
+  }
+  await issue(c, user);
+  return c.redirect('/tasks', 303);
+});
+app.post('/logout', protectedRoute, (c) => {
+  deleteCookie(c, cookieName, { path: '/' });
+  return c.redirect('/login', 303);
+});
+app.get('/tasks', protectedRoute, async (c) => {
+  const user = c.get('user')!;
+  return page(
+    c,
+    'Tasks',
+    <App email={user.email_normalized} items={await taskRepo.list(user.id)} />,
+  );
+});
+app.post('/tasks', protectedRoute, async (c) => {
+  const user = c.get('user')!;
+  const data = await form(c);
+  const values = { title: data.title ?? '', description: data.description ?? '' };
+  const errors = taskInput(values.title, values.description);
+  if (Object.keys(errors).length) return taskMorph(c, user, values, errors);
+  await taskRepo.create(user.id, values.title.trim(), values.description);
+  return taskMorph(c, user);
+});
+for (const action of ['edit', 'toggle', 'delete'] as const) {
+  app.post(`/tasks/:publicId/${action}`, protectedRoute, async (c) => {
+    const user = c.get('user')!;
+    const taskId = idFrom(c.req.param('publicId') ?? '');
+    if (!taskId) {
+      return c.notFound();
+    }
+    const data = await form(c);
+    if (action === 'edit') {
+      const values = { title: data.title ?? '', description: data.description ?? '' };
+      const errors = taskInput(values.title, values.description);
+      if (Object.keys(errors).length) return taskMorph(c, user, values, errors);
+      if (!(await taskRepo.edit(taskId, user.id, values.title.trim(), values.description)).length) {
+        return c.notFound();
+      }
+    } else if (action === 'toggle') {
+      if (!(await taskRepo.toggle(taskId, user.id)).length) return c.notFound();
+    } else if (!(await taskRepo.delete(taskId, user.id)).length) return c.notFound();
+    return taskMorph(c, user);
+  });
+}
+app.get('/profile', protectedRoute, (c) =>
+  page(
+    c,
+    'Profile',
+    <div id='app'>
+      <h1>Change password</h1>
+      <form method='post' action='/profile/password'>
+        <label>
+          Current password<input required type='password' name='currentPassword' />
+        </label>
+        <label>
+          New password<input required type='password' name='newPassword' />
+        </label>
+        <button type='submit'>Change password</button>
+      </form>
+    </div>,
+  ));
+app.post('/profile/password', protectedRoute, async (c) => {
+  const user = c.get('user')!;
+  const data = await form(c);
+  if (!await verifyPassword(data.currentPassword ?? '', user.password_hash)) {
+    return c.text('Current password is incorrect.', 400);
+  }
+  const invalid = validatePassword(data.newPassword ?? '', user.email_normalized);
+  if (invalid) return c.text(invalid, 400);
+  const replacement = await userRepo.changePassword(user.id, await hashPassword(data.newPassword));
+  await issue(c, replacement);
+  return c.redirect('/profile', 303);
+});
+app.onError((error, c) => {
+  console.error(
+    JSON.stringify({ level: 'error', requestId: c.get('requestId'), message: error.message }),
+  );
+  return c.text('Internal server error', 500);
+});
+
+Deno.serve({ hostname: config.host, port: config.port }, app.fetch);

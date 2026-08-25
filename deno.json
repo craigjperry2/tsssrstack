@@ -1,0 +1,25 @@
+{
+  "name": "app",
+  "version": "0.1.0",
+  "imports": {
+    "@opentelemetry/api": "npm:@opentelemetry/api@1.9.1",
+    "hono": "jsr:@hono/hono@4.12.31",
+    "postgres": "npm:postgres@3.4.9",
+    "sqids": "npm:sqids@0.3.0"
+  },
+  "compilerOptions": { "strict": true, "jsx": "react-jsx", "jsxImportSource": "hono/jsx" },
+  "lint": { "exclude": ["src/app/static/vendor/"] },
+  "tasks": {
+    "dev": "deno run --watch --allow-env=ENV,APP_ORIGIN,DATABASE_URL,SESSION_SECRET,PORT,HOST,LOG_LEVEL,OTEL_DENO,OTEL_EXPORTER_OTLP_ENDPOINT,OTEL_EXPORTER_OTLP_PROTOCOL --allow-net=127.0.0.1,localhost,host.docker.internal --allow-read=src/app/static,src/app/adapters/persistence/sql src/app/main.tsx",
+    "start": "deno run --allow-env=ENV,APP_ORIGIN,DATABASE_URL,SESSION_SECRET,PORT,HOST,LOG_LEVEL,OTEL_DENO,OTEL_EXPORTER_OTLP_ENDPOINT,OTEL_EXPORTER_OTLP_PROTOCOL --allow-net --allow-read=src/app/static,src/app/adapters/persistence/sql src/app/main.tsx",
+    "migrate": "deno run --allow-env=DATABASE_URL --allow-net --allow-read=migrations src/app/adapters/persistence/migrate.ts",
+    "check": "deno check src/app/main.tsx",
+    "test": "deno test --allow-env --allow-net --allow-read"
+  },
+  "fmt": {
+    "lineWidth": 100,
+    "semiColons": true,
+    "singleQuote": true,
+    "exclude": ["AGENTS.md", "docs/plans/"]
+  }
+}
