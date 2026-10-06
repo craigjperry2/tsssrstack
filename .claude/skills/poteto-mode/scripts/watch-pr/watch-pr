@@ -1,0 +1,4 @@
+#!/bin/sh
+# Deno port of upstream pstack's bun wrapper. Needs `gh` on PATH.
+here=$(cd "$(dirname "$0")" && pwd)
+exec deno run --allow-all --no-lock --config "$here/../deno.json" "$here/main.ts" "$@"
