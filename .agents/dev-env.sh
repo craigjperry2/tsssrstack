@@ -5,6 +5,31 @@
 # `nix print-dev-env` takes ~2s even when warm, so its output is cached per flake input hash and
 # regenerated only when flake.nix or flake.lock changes.
 
+# `. dev-env.sh --login-hook` is what setup's ~/.bash_profile hook runs. Loading right there would be
+# undone: Amp keeps its own block at the end of ~/.bash_profile, and it re-sources ~/.env, which
+# resets PATH. So only schedule the load to run after every profile file: non-interactive login
+# shells (Amp itself, orb services) source BASH_ENV then, interactive ones run PROMPT_COMMAND.
+if [[ "${1:-}" == --login-hook ]]; then
+  if [[ $- == *i* ]]; then
+    PROMPT_COMMAND+=(". ${BASH_SOURCE[0]@Q} --from-prompt")
+  else
+    export BASH_ENV="${BASH_SOURCE[0]}"
+  fi
+  return
+fi
+# Load only once: drop the scheduled load so prompts and child processes don't repeat it.
+if [[ "${1:-}" == --from-prompt ]]; then
+  for __tsssrstack_i in "${!PROMPT_COMMAND[@]}"; do
+    if [[ "${PROMPT_COMMAND[__tsssrstack_i]}" == *" --from-prompt" ]]; then
+      unset 'PROMPT_COMMAND[__tsssrstack_i]'
+    fi
+  done
+  unset __tsssrstack_i
+fi
+if [[ "${BASH_ENV:-}" == "${BASH_SOURCE[0]}" ]]; then
+  unset BASH_ENV
+fi
+
 __tsssrstack_dev_env_file() {
   local repo key cache env_file tmp nix
   repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

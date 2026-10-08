@@ -39,10 +39,14 @@ install_nix() {
   fi
 }
 
-# Login shells started in the repository (Amp, orb services, terminals) load the dev shell.
+# Login shells for this repository (Amp, orb services, terminals) load the dev shell. Amp itself
+# logs in from / with AMP_WORKING_DIRECTORY set to the repository, hence the second check.
 install_shell_hook() {
   write_block "$HOME/.bash_profile" '# >>> tsssrstack dev shell >>>' '# <<< tsssrstack dev shell <<<' \
-    "case \"\$PWD/\" in \"$repo_root/\"*) . \"$repo_root/.agents/dev-env.sh\" ;; esac"
+    "for __tsssrstack_dir in \"\$PWD\" \"\${AMP_WORKING_DIRECTORY:-}\"; do
+  case \"\$__tsssrstack_dir/\" in \"$repo_root/\"*) . \"$repo_root/.agents/dev-env.sh\" --login-hook; break ;; esac
+done
+unset __tsssrstack_dir"
 }
 
 init_postgres() {
@@ -122,8 +126,8 @@ create_env() {
 write_agent_notes() {
   write_block "$HOME/.config/amp/AGENTS.md" '<!-- >>> tsssrstack orb notes >>> -->' \
     '<!-- <<< tsssrstack orb notes <<< -->' "# tsssrstack orb notes
-- Deno, PostgreSQL and psql come from the Nix dev shell pinned by flake.lock. Login shells started in
-  the repository load it automatically (hook in ~/.bash_profile, cached by .agents/dev-env.sh).
+- Deno, PostgreSQL and psql come from the Nix dev shell pinned by flake.lock. Amp's own shell, orb
+  services and terminals load it automatically (hook in ~/.bash_profile, see .agents/dev-env.sh).
   \`nix develop -c <cmd>\` works too, the same way CI runs checks.
 - There is no Docker daemon: \`docker compose\` and nginx are not used in orbs.
 - PostgreSQL runs as the systemd unit \`${pg_unit}\` (data in ${pg_data}) at

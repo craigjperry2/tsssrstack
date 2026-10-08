@@ -151,7 +151,8 @@ app.use('*', async (c, next) => {
   }
   await next();
 });
-app.use('/static/*', serveStatic({ root: './src/app/static' }));
+// serveStatic joins root with the full request path, which already starts with /static.
+app.use('/static/*', serveStatic({ root: './src/app' }));
 const protectedRoute = async (c: AppContext, next: Next) => {
   if (!c.get('user')) return c.redirect('/login');
   await next();
