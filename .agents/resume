@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Fast, idempotent repair on orb activation and wake: make sure PostgreSQL is accepting connections.
+# Setup leaves the server stopped so the snapshot holds a cleanly shut down cluster.
+set -euo pipefail
+
+# Type=notify: returns once PostgreSQL is ready, and is a no-op when it is already running.
+sudo systemctl start tsssrstack-postgres

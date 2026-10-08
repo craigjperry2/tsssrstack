@@ -10,9 +10,9 @@
   "compilerOptions": { "strict": true, "jsx": "react-jsx", "jsxImportSource": "hono/jsx" },
   "lint": { "exclude": ["src/app/static/vendor/"] },
   "tasks": {
-    "dev": "deno run --watch --allow-env=ENV,APP_ORIGIN,DATABASE_URL,SESSION_SECRET,PORT,HOST,LOG_LEVEL,OTEL_DENO,OTEL_EXPORTER_OTLP_ENDPOINT,OTEL_EXPORTER_OTLP_PROTOCOL --allow-net=127.0.0.1,localhost,host.docker.internal --allow-read=src/app/static,src/app/adapters/persistence/sql src/app/main.tsx",
-    "start": "deno run --allow-env=ENV,APP_ORIGIN,DATABASE_URL,SESSION_SECRET,PORT,HOST,LOG_LEVEL,OTEL_DENO,OTEL_EXPORTER_OTLP_ENDPOINT,OTEL_EXPORTER_OTLP_PROTOCOL --allow-net --allow-read=src/app/static,src/app/adapters/persistence/sql src/app/main.tsx",
-    "migrate": "deno run --allow-env=DATABASE_URL --allow-net --allow-read=migrations src/app/adapters/persistence/migrate.ts",
+    "dev": "deno run --watch --ignore-env --allow-env=ENV,APP_ORIGIN,DATABASE_URL,SESSION_SECRET,PORT,HOST,LOG_LEVEL,OTEL_DENO,OTEL_EXPORTER_OTLP_ENDPOINT,OTEL_EXPORTER_OTLP_PROTOCOL --allow-net=127.0.0.1,localhost,host.docker.internal --allow-read=src/app/static,src/app/adapters/persistence/sql src/app/main.tsx",
+    "start": "deno run --ignore-env --allow-env=ENV,APP_ORIGIN,DATABASE_URL,SESSION_SECRET,PORT,HOST,LOG_LEVEL,OTEL_DENO,OTEL_EXPORTER_OTLP_ENDPOINT,OTEL_EXPORTER_OTLP_PROTOCOL --allow-net --allow-read=src/app/static,src/app/adapters/persistence/sql src/app/main.tsx",
+    "migrate": "deno run --ignore-env --allow-env=DATABASE_URL --allow-net --allow-read=migrations src/app/adapters/persistence/migrate.ts",
     "check": "deno check src/app/main.tsx",
     "test": "deno test --allow-env --allow-net --allow-read"
   },
@@ -20,6 +20,6 @@
     "lineWidth": 100,
     "semiColons": true,
     "singleQuote": true,
-    "exclude": ["AGENTS.md", "docs/plans/"]
+    "exclude": ["AGENTS.md", "docs/plans/", "src/app/static/vendor/"]
   }
 }

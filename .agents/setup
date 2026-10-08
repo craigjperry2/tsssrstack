@@ -1,0 +1,155 @@
+#!/usr/bin/env bash
+# Prepares a fresh Amp orb. Every tool (Deno, PostgreSQL, ...) comes from the Nix dev shell pinned by
+# flake.lock, the same environment CI and local development use via `nix develop`.
+# Must stay idempotent and fast on a warm (snapshot-restored) filesystem.
+set -euo pipefail
+
+cd "$(dirname "${BASH_SOURCE[0]}")/.."
+repo_root="$PWD"
+pg_unit=tsssrstack-postgres
+pg_data="$HOME/.local/share/tsssrstack/postgres"
+database_url=postgres://app:app@127.0.0.1:5432/app
+
+step() {
+  local name=$1 start=$SECONDS
+  shift
+  echo "==> ${name}"
+  "$@"
+  echo "    ${name} took $((SECONDS - start))s"
+}
+
+# Replaces the block between the begin/end marker lines in a file, or appends it.
+write_block() {
+  local file=$1 begin=$2 end=$3 body=$4
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+  sed -i "\\|^${begin}\$|,\\|^${end}\$|d" "$file"
+  printf '%s\n%s\n%s\n' "$begin" "$body" "$end" >>"$file"
+}
+
+install_nix() {
+  if [[ ! -e "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
+    sh <(curl -fsSL https://nixos.org/nix/install) --no-daemon --yes
+  else
+    echo "    nix already installed"
+  fi
+  if ! grep -qs '^experimental-features = .*flakes' "$HOME/.config/nix/nix.conf"; then
+    mkdir -p "$HOME/.config/nix"
+    echo 'experimental-features = nix-command flakes' >>"$HOME/.config/nix/nix.conf"
+  fi
+}
+
+# Login shells started in the repository (Amp, orb services, terminals) load the dev shell.
+install_shell_hook() {
+  write_block "$HOME/.bash_profile" '# >>> tsssrstack dev shell >>>' '# <<< tsssrstack dev shell <<<' \
+    "case \"\$PWD/\" in \"$repo_root/\"*) . \"$repo_root/.agents/dev-env.sh\" ;; esac"
+}
+
+init_postgres() {
+  if [[ -f "$pg_data/PG_VERSION" ]]; then
+    echo "    cluster exists at $pg_data"
+    return
+  fi
+  mkdir -p "$(dirname "$pg_data")"
+  initdb -D "$pg_data" -U app --pwfile=<(echo app) --auth=scram-sha-256 -E UTF8 --no-locale >/dev/null
+}
+
+# systemd owns the server so it outlives setup and Amp's process restarts. Orbs are ephemeral, so
+# durability is traded for speed; the server must therefore always be stopped cleanly.
+install_postgres_unit() {
+  local unit_file="/etc/systemd/system/${pg_unit}.service" unit
+  unit="[Unit]
+Description=tsssrstack PostgreSQL from the Nix dev shell
+
+[Service]
+Type=notify
+User=$(id -un)
+ExecStart=$(command -v postgres) -D $pg_data -c listen_addresses=127.0.0.1 -c port=5432 -c unix_socket_directories=$pg_data -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+KillSignal=SIGINT
+KillMode=mixed
+TimeoutSec=120
+
+[Install]
+WantedBy=multi-user.target"
+  if [[ "$(cat "$unit_file" 2>/dev/null)" != "$unit" ]]; then
+    printf '%s\n' "$unit" | sudo tee "$unit_file" >/dev/null
+    sudo systemctl daemon-reload
+    sudo systemctl try-restart "$pg_unit"
+  fi
+  sudo systemctl enable --quiet "$pg_unit"
+}
+
+stop_temporary_postgres() {
+  if [[ "$pg_started_by_setup" == true ]]; then
+    sudo systemctl stop "$pg_unit"
+    pg_started_by_setup=false
+  fi
+}
+
+# Leave the server as we found it: setup must not leave it running for the snapshot.
+pg_started_by_setup=false
+trap stop_temporary_postgres EXIT
+
+migrate() {
+  if ! systemctl is-active --quiet "$pg_unit"; then
+    pg_started_by_setup=true
+    sudo systemctl start "$pg_unit"
+  fi
+  if [[ -z "$(PGPASSWORD=app psql -h 127.0.0.1 -U app -d postgres -tAc \
+    "SELECT 1 FROM pg_database WHERE datname = 'app'")" ]]; then
+    PGPASSWORD=app createdb -h 127.0.0.1 -U app app
+  fi
+  DATABASE_URL="$database_url" deno task migrate
+  stop_temporary_postgres
+}
+
+cache_deno_deps() {
+  deno install
+  deno cache src/app/main.tsx src/app/adapters/persistence/migrate.ts tests/*.ts
+}
+
+create_env() {
+  if [[ -f .env ]]; then
+    echo "    .env already exists"
+    return
+  fi
+  local secret
+  secret=$(openssl rand -hex 32)
+  sed "s|^SESSION_SECRET=.*|SESSION_SECRET=${secret}|" .env.example >.env
+  echo "    created .env with a random SESSION_SECRET"
+}
+
+write_agent_notes() {
+  write_block "$HOME/.config/amp/AGENTS.md" '<!-- >>> tsssrstack orb notes >>> -->' \
+    '<!-- <<< tsssrstack orb notes <<< -->' "# tsssrstack orb notes
+- Deno, PostgreSQL and psql come from the Nix dev shell pinned by flake.lock. Login shells started in
+  the repository load it automatically (hook in ~/.bash_profile, cached by .agents/dev-env.sh).
+  \`nix develop -c <cmd>\` works too, the same way CI runs checks.
+- There is no Docker daemon: \`docker compose\` and nginx are not used in orbs.
+- PostgreSQL runs as the systemd unit \`${pg_unit}\` (data in ${pg_data}) at
+  ${database_url}. \`.agents/resume\` starts it; \`.agents/setup\` applies migrations.
+- Run the app with \`amp orb services ensure\` (service \`app\` in .amp/services.yaml). It sets
+  APP_ORIGIN to the portal origin so Hono's CSRF Origin check passes."
+}
+
+step "install nix" install_nix
+step "install login-shell hook" install_shell_hook
+
+echo "==> load nix dev shell"
+start=$SECONDS
+# At top level on purpose: see .agents/dev-env.sh.
+set +u
+# shellcheck source=.agents/dev-env.sh
+source .agents/dev-env.sh
+set -u
+deno --version | head -n1
+postgres --version
+echo "    load nix dev shell took $((SECONDS - start))s"
+
+step "cache deno dependencies" cache_deno_deps
+step "initialise postgresql cluster" init_postgres
+step "install postgresql systemd unit" install_postgres_unit
+step "run migrations" migrate
+step "create .env" create_env
+step "write orb agent notes" write_agent_notes
+echo "==> setup complete"

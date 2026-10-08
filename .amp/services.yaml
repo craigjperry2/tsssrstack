@@ -1,0 +1,14 @@
+services:
+  app:
+    # Load .env, then let Amp's PORT and portal origin win so CSRF Origin checks match the portal.
+    # Avoid ${...} here: the service runner passes it to systemd, which substitutes it.
+    command: >-
+      amp_port="$PORT";
+      set -a; . ./.env; set +a;
+      export PORT="$amp_port" HOST=127.0.0.1;
+      export APP_ORIGIN="$(printf '%s' "$PUBLIC_URL" | cut -d/ -f1-3)";
+      exec deno task dev
+    health: /readyz
+    portal:
+      title: App
+      description: Register an account to sign in.

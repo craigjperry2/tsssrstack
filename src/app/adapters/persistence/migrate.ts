@@ -6,7 +6,7 @@ try {
   await sql`SELECT pg_advisory_lock(829225924001)`;
   await sql`CREATE SCHEMA IF NOT EXISTS app`;
   await sql`CREATE TABLE IF NOT EXISTS app.schema_migrations (version integer PRIMARY KEY, filename text NOT NULL, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`;
-  const files = [...Deno.readDir('migrations')].filter((f) =>
+  const files = [...Deno.readDirSync('migrations')].filter((f) =>
     f.isFile && /^\d{3}_.+\.sql$/u.test(f.name)
   ).sort((a, b) => a.name.localeCompare(b.name));
   for (const file of files) {

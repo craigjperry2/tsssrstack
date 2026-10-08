@@ -1,5 +1,12 @@
 const encoder = new TextEncoder();
-const parameters = { name: 'Argon2id', memory: 65536, iterations: 3, parallelism: 1 } as const;
+const parameters = { name: 'Argon2id', memory: 65536, passes: 3, parallelism: 1 } as const;
+// WebCrypto Argon2 ("Modern Algorithms in WebCrypto"); Deno's lib types don't declare it yet.
+type Argon2Params = Algorithm & {
+  nonce: BufferSource;
+  memory: number;
+  passes: number;
+  parallelism: number;
+};
 
 function b64(bytes: Uint8Array): string {
   return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll(
@@ -31,9 +38,8 @@ async function derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
   ]);
   const saltCopy = new ArrayBuffer(salt.byteLength);
   new Uint8Array(saltCopy).set(salt);
-  return new Uint8Array(
-    await crypto.subtle.deriveBits({ ...parameters, salt: saltCopy }, key, 256),
-  );
+  const algorithm: Argon2Params = { ...parameters, nonce: saltCopy };
+  return new Uint8Array(await crypto.subtle.deriveBits(algorithm, key, 256));
 }
 export async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
