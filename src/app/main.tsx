@@ -11,8 +11,9 @@ import { hashPassword, verifyPassword } from './adapters/security/password.ts';
 import { createSql } from './adapters/persistence/client.ts';
 import { tasks, type User, users } from './adapters/persistence/repositories.ts';
 import { Layout } from './adapters/web/views/layout.tsx';
-import { App, appSqids } from './adapters/web/views/app.tsx';
+import { App, appSqids, type Editing } from './adapters/web/views/app.tsx';
 import { Auth } from './adapters/web/views/auth.tsx';
+import { handleError } from './adapters/web/errors.ts';
 
 type Variables = { user?: User; requestId: string };
 type Session = { userId: number; sessionVersion: number; issuedAt: number; expiresAt: number };
@@ -91,18 +92,22 @@ async function form(
     Object.entries(data).map(([key, value]) => [key, typeof value === 'string' ? value : '']),
   );
 }
-async function taskMorph(
-  c: AppContext,
-  user: User,
-  values: { title?: string; description?: string } = {},
-  errors: Record<string, string> = {},
-) {
+type TaskView = {
+  values?: { title?: string; description?: string };
+  errors?: Record<string, string>;
+  editing?: Editing;
+  // After a successful add, reset the form's data-bind signals; a morph alone cannot clear
+  // what the user typed because it only reflects changed value attributes.
+  clearForm?: boolean;
+};
+async function taskMorph(c: AppContext, user: User, view: TaskView = {}) {
   const element = await (
     <App
       email={user.email_normalized}
       items={await taskRepo.list(user.id)}
-      values={values}
-      errors={errors}
+      values={view.values}
+      errors={view.errors}
+      editing={view.editing}
     />
   );
   c.header('Cache-Control', 'no-cache');
@@ -112,7 +117,19 @@ async function taskMorph(
     // Hono prefixes every physical data line, preserving valid SSE framing for
     // multiline JSX while Datastar receives the required `elements <html>` payload.
     await stream.writeSSE({ event: 'datastar-patch-elements', data: `elements ${element}` });
+    if (view.clearForm) {
+      await stream.writeSSE({
+        event: 'datastar-patch-signals',
+        data: `signals ${JSON.stringify({ title: '', description: '' })}`,
+      });
+    }
   });
+}
+async function ownedTaskId(c: AppContext, user: User): Promise<number | undefined> {
+  const taskId = idFrom(c.req.param('publicId') ?? '');
+  return taskId && (await taskRepo.list(user.id)).some((task) => task.id === taskId)
+    ? taskId
+    : undefined;
 }
 
 app.use('*', async (c, next) => {
@@ -219,9 +236,20 @@ app.post('/tasks', protectedRoute, async (c) => {
   const data = await form(c);
   const values = { title: data.title ?? '', description: data.description ?? '' };
   const errors = taskInput(values.title, values.description);
-  if (Object.keys(errors).length) return taskMorph(c, user, values, errors);
+  if (Object.keys(errors).length) return taskMorph(c, user, { values, errors });
   await taskRepo.create(user.id, values.title.trim(), values.description);
-  return taskMorph(c, user);
+  return taskMorph(c, user, { clearForm: true });
+});
+// Editing is a server-rendered mode of one row: /tasks/:id/edit morphs that row into a form and
+// /tasks/:id morphs it back to the read view.
+app.get('/tasks/:publicId/edit', protectedRoute, async (c) => {
+  const user = c.get('user')!;
+  const taskId = await ownedTaskId(c, user);
+  return taskId ? taskMorph(c, user, { editing: { id: taskId } }) : c.notFound();
+});
+app.get('/tasks/:publicId', protectedRoute, async (c) => {
+  const user = c.get('user')!;
+  return await ownedTaskId(c, user) ? taskMorph(c, user) : c.notFound();
 });
 for (const action of ['edit', 'toggle', 'delete'] as const) {
   app.post(`/tasks/:publicId/${action}`, protectedRoute, async (c) => {
@@ -234,7 +262,9 @@ for (const action of ['edit', 'toggle', 'delete'] as const) {
     if (action === 'edit') {
       const values = { title: data.title ?? '', description: data.description ?? '' };
       const errors = taskInput(values.title, values.description);
-      if (Object.keys(errors).length) return taskMorph(c, user, values, errors);
+      if (Object.keys(errors).length) {
+        return taskMorph(c, user, { editing: { id: taskId, values, errors } });
+      }
       if (!(await taskRepo.edit(taskId, user.id, values.title.trim(), values.description)).length) {
         return c.notFound();
       }
@@ -273,11 +303,6 @@ app.post('/profile/password', protectedRoute, async (c) => {
   await issue(c, replacement);
   return c.redirect('/profile', 303);
 });
-app.onError((error, c) => {
-  console.error(
-    JSON.stringify({ level: 'error', requestId: c.get('requestId'), message: error.message }),
-  );
-  return c.text('Internal server error', 500);
-});
+app.onError(handleError);
 
 Deno.serve({ hostname: config.host, port: config.port }, app.fetch);

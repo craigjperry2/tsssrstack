@@ -1,6 +1,4 @@
 {
-  "name": "app",
-  "version": "0.1.0",
   "imports": {
     "@opentelemetry/api": "npm:@opentelemetry/api@1.9.1",
     "hono": "jsr:@hono/hono@4.12.31",
