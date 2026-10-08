@@ -6,6 +6,7 @@ export const Layout: FC<{ title: string; children: Child }> = ({ title, children
       <meta name='viewport' content='width=device-width, initial-scale=1' />
       <title>{title}</title>
       <link rel='stylesheet' href='/static/vendor/pico-2.1.1.min.css' />
+      <link rel='stylesheet' href='/static/app.css' />
     </head>
     <body>
       <main class='container'>{children}</main>

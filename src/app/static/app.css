@@ -1,0 +1,23 @@
+/* Task table: keep the toggle and action columns as narrow as their content. */
+.tasks td,
+.tasks th {
+  vertical-align: middle;
+}
+.tasks .task-done,
+.tasks .task-actions {
+  width: 1%;
+  white-space: nowrap;
+}
+.tasks td form {
+  display: inline;
+  margin: 0;
+}
+.tasks td input[type='checkbox'] {
+  margin: 0;
+}
+.tasks .task-actions button {
+  width: auto;
+  margin: 0 0 0 0.25rem;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+}

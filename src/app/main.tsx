@@ -9,9 +9,9 @@ import { loadConfig } from './config.ts';
 import { normalizeEmail, taskInput, validatePassword, validEmail } from './domain/validation.ts';
 import { hashPassword, verifyPassword } from './adapters/security/password.ts';
 import { createSql } from './adapters/persistence/client.ts';
-import { tasks, type User, users } from './adapters/persistence/repositories.ts';
+import { type Task, tasks, type User, users } from './adapters/persistence/repositories.ts';
 import { Layout } from './adapters/web/views/layout.tsx';
-import { App, appSqids, type Editing } from './adapters/web/views/app.tsx';
+import { App, appSqids, ClosedEditor, TaskEditor } from './adapters/web/views/app.tsx';
 import { Auth } from './adapters/web/views/auth.tsx';
 import { handleError } from './adapters/web/errors.ts';
 
@@ -92,44 +92,47 @@ async function form(
     Object.entries(data).map(([key, value]) => [key, typeof value === 'string' ? value : '']),
   );
 }
-type TaskView = {
-  values?: { title?: string; description?: string };
-  errors?: Record<string, string>;
-  editing?: Editing;
-  // After a successful add, reset the form's data-bind signals; a morph alone cannot clear
-  // what the user typed because it only reflects changed value attributes.
-  clearForm?: boolean;
-};
-async function taskMorph(c: AppContext, user: User, view: TaskView = {}) {
-  const element = await (
-    <App
-      email={user.email_normalized}
-      items={await taskRepo.list(user.id)}
-      values={view.values}
-      errors={view.errors}
-      editing={view.editing}
-    />
-  );
+type Patch = { event: string; data: string };
+function sse(c: AppContext, patches: Patch[]) {
   c.header('Cache-Control', 'no-cache');
   c.header('X-Accel-Buffering', 'no');
   c.header('Vary', 'Accept-Encoding');
   return streamSSE(c, async (stream) => {
     // Hono prefixes every physical data line, preserving valid SSE framing for
     // multiline JSX while Datastar receives the required `elements <html>` payload.
-    await stream.writeSSE({ event: 'datastar-patch-elements', data: `elements ${element}` });
-    if (view.clearForm) {
-      await stream.writeSSE({
-        event: 'datastar-patch-signals',
-        data: `signals ${JSON.stringify({ title: '', description: '' })}`,
-      });
-    }
+    for (const patch of patches) await stream.writeSSE(patch);
   });
 }
-async function ownedTaskId(c: AppContext, user: User): Promise<number | undefined> {
+// Fat morph of the whole #app region.
+async function appPatch(
+  user: User,
+  values?: { title?: string; description?: string },
+  errors?: Record<string, string>,
+): Promise<Patch> {
+  const element = await (
+    <App
+      email={user.email_normalized}
+      items={await taskRepo.list(user.id)}
+      values={values}
+      errors={errors}
+    />
+  );
+  return { event: 'datastar-patch-elements', data: `elements ${element}` };
+}
+// Swaps one element by id without morphing, bypassing its data-ignore-morph guard.
+const replacePatch = async (element: Child): Promise<Patch> => ({
+  event: 'datastar-patch-elements',
+  data: `mode replace\nelements ${await element}`,
+});
+// After a successful add, reset the form's data-bind signals; a morph alone cannot clear
+// what the user typed because it only reflects changed value attributes.
+const clearAddForm: Patch = {
+  event: 'datastar-patch-signals',
+  data: `signals ${JSON.stringify({ title: '', description: '' })}`,
+};
+async function ownedTask(c: AppContext, user: User): Promise<Task | undefined> {
   const taskId = idFrom(c.req.param('publicId') ?? '');
-  return taskId && (await taskRepo.list(user.id)).some((task) => task.id === taskId)
-    ? taskId
-    : undefined;
+  return taskId ? (await taskRepo.list(user.id)).find((task) => task.id === taskId) : undefined;
 }
 
 app.use('*', async (c, next) => {
@@ -236,42 +239,44 @@ app.post('/tasks', protectedRoute, async (c) => {
   const data = await form(c);
   const values = { title: data.title ?? '', description: data.description ?? '' };
   const errors = taskInput(values.title, values.description);
-  if (Object.keys(errors).length) return taskMorph(c, user, { values, errors });
+  if (Object.keys(errors).length) return sse(c, [await appPatch(user, values, errors)]);
   await taskRepo.create(user.id, values.title.trim(), values.description);
-  return taskMorph(c, user, { clearForm: true });
+  return sse(c, [await appPatch(user), clearAddForm]);
 });
-// Editing is a server-rendered mode of one row: /tasks/:id/edit morphs that row into a form and
-// /tasks/:id morphs it back to the read view.
+// Editing happens in a per-task editor row (see TaskEditor). Opening, closing and failed saves
+// replace only that row; everything else fat-morphs #app and leaves open editors untouched.
 app.get('/tasks/:publicId/edit', protectedRoute, async (c) => {
-  const user = c.get('user')!;
-  const taskId = await ownedTaskId(c, user);
-  return taskId ? taskMorph(c, user, { editing: { id: taskId } }) : c.notFound();
+  const task = await ownedTask(c, c.get('user')!);
+  return task ? sse(c, [await replacePatch(<TaskEditor task={task} />)]) : c.notFound();
 });
 app.get('/tasks/:publicId', protectedRoute, async (c) => {
-  const user = c.get('user')!;
-  return await ownedTaskId(c, user) ? taskMorph(c, user) : c.notFound();
+  const task = await ownedTask(c, c.get('user')!);
+  return task ? sse(c, [await replacePatch(<ClosedEditor taskId={task.id} />)]) : c.notFound();
 });
-for (const action of ['edit', 'toggle', 'delete'] as const) {
+app.post('/tasks/:publicId/edit', protectedRoute, async (c) => {
+  const user = c.get('user')!;
+  const task = await ownedTask(c, user);
+  if (!task) return c.notFound();
+  const data = await form(c);
+  const values = { title: data.title ?? '', description: data.description ?? '' };
+  const errors = taskInput(values.title, values.description);
+  if (Object.keys(errors).length) {
+    return sse(c, [await replacePatch(<TaskEditor task={task} values={values} errors={errors} />)]);
+  }
+  if (!(await taskRepo.edit(task.id, user.id, values.title.trim(), values.description)).length) {
+    return c.notFound();
+  }
+  return sse(c, [await appPatch(user), await replacePatch(<ClosedEditor taskId={task.id} />)]);
+});
+for (const action of ['toggle', 'delete'] as const) {
   app.post(`/tasks/:publicId/${action}`, protectedRoute, async (c) => {
     const user = c.get('user')!;
     const taskId = idFrom(c.req.param('publicId') ?? '');
-    if (!taskId) {
-      return c.notFound();
-    }
-    const data = await form(c);
-    if (action === 'edit') {
-      const values = { title: data.title ?? '', description: data.description ?? '' };
-      const errors = taskInput(values.title, values.description);
-      if (Object.keys(errors).length) {
-        return taskMorph(c, user, { editing: { id: taskId, values, errors } });
-      }
-      if (!(await taskRepo.edit(taskId, user.id, values.title.trim(), values.description)).length) {
-        return c.notFound();
-      }
-    } else if (action === 'toggle') {
-      if (!(await taskRepo.toggle(taskId, user.id)).length) return c.notFound();
-    } else if (!(await taskRepo.delete(taskId, user.id)).length) return c.notFound();
-    return taskMorph(c, user);
+    if (!taskId) return c.notFound();
+    const changed = action === 'toggle'
+      ? await taskRepo.toggle(taskId, user.id)
+      : await taskRepo.delete(taskId, user.id);
+    return changed.length ? sse(c, [await appPatch(user)]) : c.notFound();
   });
 }
 app.get('/profile', protectedRoute, (c) =>

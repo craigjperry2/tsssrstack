@@ -1,4 +1,4 @@
-import type { FC } from 'hono/jsx';
+import { type FC, Fragment } from 'hono/jsx';
 import type { Task } from '../../persistence/repositories.ts';
 import Sqids from 'sqids';
 const sqids = new Sqids({
@@ -11,7 +11,6 @@ const postExpr = (url: string) => `@post('${url}', {contentType: 'form'})`;
 const getExpr = (url: string) => `@get('${url}')`;
 type Values = { title?: string; description?: string };
 type Errors = Record<string, string>;
-export type Editing = { id: number; values?: Values; errors?: Errors };
 
 const ErrorSummary: FC<{ errors: Errors }> = ({ errors }) =>
   Object.keys(errors).length > 0
@@ -72,29 +71,49 @@ const TaskRow: FC<{ task: Task }> = ({ task }) => {
           </>
         )}
       </td>
-      <td>
-        <form role='group' data-on:submit__prevent={postExpr(`${url}/delete`)}>
-          <button type='button' class='secondary outline' data-on:click={getExpr(`${url}/edit`)}>
-            Edit
+      <td class='task-actions'>
+        <button
+          type='button'
+          class='secondary outline'
+          aria-label={`Edit ${task.title}`}
+          aria-controls={editorId(task.id)}
+          data-on:click={getExpr(`${url}/edit`)}
+        >
+          Edit
+        </button>
+        <form data-on:submit__prevent={postExpr(`${url}/delete`)}>
+          <button type='submit' class='contrast outline' aria-label={`Delete ${task.title}`}>
+            Delete
           </button>
-          <button type='submit' class='contrast outline'>Delete</button>
         </form>
       </td>
     </tr>
   );
 };
 
-const EditRow: FC<{ task: Task; editing: Editing }> = ({ task, editing }) => {
+// Each task has an editor row below it. It is closed (hidden and empty) until Edit replaces it
+// with a form. data-ignore-morph makes Datastar keep whichever editor row is in the page when
+// the table is fat-morphed, so an open editor and its unsaved input survive other actions.
+// Edit, Save and Cancel swap just this row with `mode replace`, which bypasses that guard.
+const editorId = (taskId: number) => `edit-${id(taskId)}`;
+export const ClosedEditor: FC<{ taskId: number }> = ({ taskId }) => (
+  <tr id={editorId(taskId)} data-ignore-morph hidden></tr>
+);
+export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = (
+  { task, values, errors = {} },
+) => {
   const url = `/tasks/${id(task.id)}`;
-  const errors = editing.errors ?? {};
   return (
-    <tr id={`task-${id(task.id)}`}>
+    <tr id={editorId(task.id)} data-ignore-morph>
       <td colSpan={3}>
-        <form data-on:submit__prevent={postExpr(`${url}/edit`)}>
+        <form
+          aria-label={`Edit ${task.title}`}
+          data-on:submit__prevent={postExpr(`${url}/edit`)}
+        >
           <ErrorSummary errors={errors} />
           <TaskFields
-            prefix='edit'
-            values={editing.values ?? { title: task.title, description: task.description ?? '' }}
+            prefix={editorId(task.id)}
+            values={values ?? { title: task.title, description: task.description ?? '' }}
             errors={errors}
           />
           <div role='group'>
@@ -113,9 +132,8 @@ export const App: FC<
     items: Task[];
     values?: Values;
     errors?: Errors;
-    editing?: Editing;
   }
-> = ({ email, items, values = {}, errors = {}, editing }) => (
+> = ({ email, items, values = {}, errors = {} }) => (
   <div id='app'>
     <nav>
       <ul>
@@ -141,24 +159,27 @@ export const App: FC<
       <TaskFields prefix='task' values={values} errors={errors} bind />
       <button type='submit'>Add task</button>
     </form>
-    {items.length === 0 ? <p>No tasks yet. Add one above.</p> : (
-      <table aria-label='Task list'>
-        <thead>
-          <tr>
-            <th scope='col'>Done</th>
-            <th scope='col'>Task</th>
-            <th scope='col'>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((task) =>
-            editing?.id === task.id
-              ? <EditRow key={task.id} task={task} editing={editing} />
-              : <TaskRow key={task.id} task={task} />
-          )}
-        </tbody>
-      </table>
-    )}
+    {items.length === 0
+      ? <p>No tasks yet. Add one above.</p>
+      : (
+        <table class='tasks' aria-label='Task list'>
+          <thead>
+            <tr>
+              <th scope='col' class='task-done'>Done</th>
+              <th scope='col'>Task</th>
+              <th scope='col' class='task-actions'>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((task) => (
+              <Fragment key={String(task.id)}>
+                <TaskRow task={task} />
+                <ClosedEditor taskId={task.id} />
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
   </div>
 );
 export const appSqids = sqids;
