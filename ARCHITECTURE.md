@@ -108,12 +108,20 @@ tools/architecture_lint.ts  deno lint plugin enforcing the dependency rule
 
 Adapters never import each other. For example, the web adapter does not know the persistence adapter
 exists, and an adapter receives only the settings it needs, never the whole `Config`. The domain and
-application layers also stay deterministic: no JSX, no `Deno.*`, no `fetch`, no `Date.now()` or
-`new Date()`, no `Math.random()`. Time, randomness and I/O have to come in through a port.
+application layers also stay deterministic: no JSX, no `Deno`, `fetch`, `crypto`, `globalThis`,
+`window` or `self`, no `Date` except `new Date(value)`, and no `Math.random()`. Time, randomness and
+I/O have to come in through a port. A parameter or import with one of those names is fine, since
+injection is the point.
 
 This is enforced, not just documented. [`tools/architecture_lint.ts`](tools/architecture_lint.ts) is
 a `deno lint` plugin. It checks every import, re-export, type-only import, `import()` type and
-dynamic import under `src/app/`, and reports files outside the known layers.
+dynamic import under `src/app/`, and reports files outside the known layers (only `main.tsx` and
+`config.ts` sit at the root). Relative paths, absolute paths, `file:` URLs and bare specifiers that
+`deno.json` maps to local files are classified by the layer they reach. `npm:`, `jsr:` and `node:`
+specifiers, directly or through the import map, are external packages. Remote URLs and unmapped bare
+specifiers are rejected. The purity check follows references to the globals rather than spellings,
+so `globalThis.fetch`, `Date['now']` and `const D = Date` are caught too. The lint API has no scope
+analysis, so a name declared anywhere in a file counts as locally bound throughout it.
 [`tests/architecture_test.ts`](tests/architecture_test.ts) proves that it catches each kind of
 violation. CI runs both.
 
