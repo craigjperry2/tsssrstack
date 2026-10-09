@@ -1,13 +1,25 @@
 import { App, ClosedEditor, TaskEditor } from '../../src/app/adapters/web/views/tasks.tsx';
 import { encodePublicId } from '../../src/app/adapters/web/public-id.ts';
-import type { Task } from '../../src/app/adapters/persistence/repositories.ts';
+import type { Task, TaskDescription, TaskTitle } from '../../src/app/domain/task.ts';
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
 };
 const count = (html: string, pattern: RegExp) => html.match(pattern)?.length ?? 0;
 const items: Task[] = [
-  { id: 1, title: 'Buy milk', description: 'Semi-skimmed', is_completed: true },
-  { id: 2, title: '<b>Write report</b>', description: null, is_completed: false },
+  {
+    id: 1,
+    ownerId: 7,
+    title: 'Buy milk' as TaskTitle,
+    description: 'Semi-skimmed' as TaskDescription,
+    completed: true,
+  },
+  {
+    id: 2,
+    ownerId: 7,
+    title: '<b>Write report</b>' as TaskTitle,
+    description: null,
+    completed: false,
+  },
 ];
 const render = async (props: Partial<Parameters<typeof App>[0]> = {}) =>
   String(await <App email='person@example.test' items={items} {...props} />);

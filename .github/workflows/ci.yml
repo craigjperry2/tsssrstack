@@ -20,6 +20,9 @@ jobs:
     strategy: { matrix: { os: [ubuntu-latest, macos-latest] } }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
+    env:
+      # A throwaway cluster for the repository contract tests, started below from the Nix shell.
+      DATABASE_URL: postgres://app@127.0.0.1:5432/app
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -28,7 +31,16 @@ jobs:
       - run: nix develop -c deno fmt --check
       - run: nix develop -c deno lint
       - run: nix develop -c deno check src/app/main.tsx
-      - run: nix develop -c deno test
+      - name: Start PostgreSQL and apply migrations
+        run: |
+          nix develop -c sh -c '
+            set -eu
+            initdb -D "$RUNNER_TEMP/pg" -U app --auth=trust -E UTF8 --no-locale >/dev/null
+            pg_ctl -D "$RUNNER_TEMP/pg" -l "$RUNNER_TEMP/pg.log" -w start \
+              -o "-c listen_addresses=127.0.0.1 -c port=5432 -k $RUNNER_TEMP"
+            createdb -h 127.0.0.1 -U app app
+            deno task migrate'
+      - run: nix develop -c deno task test
       - run: nix develop -c deno audit
       - name: Verify vendored assets match SHA256SUMS
         run: nix develop -c sh -c 'cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS'

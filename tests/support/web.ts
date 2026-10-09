@@ -1,6 +1,7 @@
 import { createWebApp } from '../../src/app/adapters/web/app.tsx';
 import type { WebDeps } from '../../src/app/adapters/web/context.tsx';
-import { fakePasswords, memoryTasks, memoryUsers } from './fakes.ts';
+import { taskService } from '../../src/app/application/tasks.ts';
+import { fakePasswords, memoryTaskRepository, memoryUsers } from './fakes.ts';
 
 export const origin = 'https://app.test';
 export const password = 'correct-horse-battery';
@@ -8,7 +9,7 @@ export const password = 'correct-horse-battery';
 export function testApp(overrides: Partial<WebDeps> = {}) {
   return createWebApp({
     users: memoryUsers(),
-    tasks: memoryTasks(),
+    tasks: taskService({ tasks: memoryTaskRepository() }),
     passwords: fakePasswords,
     session: { secret: 'test-secret-that-is-at-least-32-bytes-long', secure: false },
     appOrigin: origin,

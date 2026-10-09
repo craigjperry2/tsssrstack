@@ -1,5 +1,5 @@
 import { type FC, Fragment } from 'hono/jsx';
-import type { Task } from '../../persistence/repositories.ts';
+import type { Task } from '../../../domain/task.ts';
 import { getExpr, postExpr } from '../datastar.ts';
 import { encodePublicId as id } from '../public-id.ts';
 type Values = { title?: string; description?: string };
@@ -58,13 +58,13 @@ const TaskRow: FC<{ task: Task }> = ({ task }) => {
           <input
             type='checkbox'
             aria-label={`Completed: ${task.title}`}
-            checked={task.is_completed}
+            checked={task.completed}
             data-on:change={postExpr(`${url}/toggle`)}
           />
         </form>
       </td>
       <td class='is-vcentered'>
-        {task.is_completed ? <s>{task.title}</s> : <strong>{task.title}</strong>}
+        {task.completed ? <s>{task.title}</s> : <strong>{task.title}</strong>}
         {task.description && (
           <>
             <br />

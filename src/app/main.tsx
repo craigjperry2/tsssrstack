@@ -3,12 +3,14 @@
 import { loadConfig } from './config.ts';
 import { hashPassword, verifyPassword } from './adapters/security/password.ts';
 import { createSql } from './adapters/persistence/client.ts';
-import { tasks, users } from './adapters/persistence/repositories.ts';
+import { users } from './adapters/persistence/repositories.ts';
+import { taskRepository } from './adapters/persistence/task-repository.ts';
+import { taskService } from './application/tasks.ts';
 import { devUserEmail, devUserPassword, seedDevUser } from './adapters/persistence/seed.ts';
 import { createWebApp } from './adapters/web/app.tsx';
 
 const config = loadConfig();
-const sql = createSql(config);
+const sql = createSql(config.databaseUrl);
 // Development convenience account, only seeded when the server runs in development;
 // test and production environments never touch this path.
 if (config.env === 'development') {
@@ -19,7 +21,7 @@ if (config.env === 'development') {
 }
 const app = createWebApp({
   users: users(sql),
-  tasks: tasks(sql),
+  tasks: taskService({ tasks: taskRepository(sql) }),
   passwords: { hash: hashPassword, verify: verifyPassword },
   session: { secret: config.sessionSecret, secure: config.env === 'production' },
   appOrigin: config.appOrigin,
