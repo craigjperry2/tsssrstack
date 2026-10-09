@@ -1,4 +1,4 @@
-import { normalizeEmail, taskInput, validatePassword } from '../src/app/domain/validation.ts';
+import { normalizeEmail, taskInput, validatePassword } from '../../src/app/domain/validation.ts';
 const assertEquals = (actual: unknown, expected: unknown) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`);
