@@ -1,24 +1,22 @@
 import type { Hono } from 'hono';
-import { validatePassword } from '../../../domain/validation.ts';
 import { currentUser, form, page, requireUser, type WebDeps, type WebEnv } from '../context.tsx';
+import { passwordChangeMessage } from '../messages.ts';
 import { issueSession } from '../session.ts';
 import { Profile } from '../views/profile.tsx';
 
-export function profileRoutes(app: Hono<WebEnv>, { users, passwords, session }: WebDeps) {
+export function profileRoutes(app: Hono<WebEnv>, { identity, session }: WebDeps) {
   app.get('/profile', requireUser, (c) => page(c, 'Profile', <Profile />));
   app.post('/profile/password', requireUser, async (c) => {
-    const user = currentUser(c);
     const data = await form(c);
-    if (!await passwords.verify(data.currentPassword ?? '', user.password_hash)) {
-      return c.text('Current password is incorrect.', 400);
-    }
-    const invalid = validatePassword(data.newPassword ?? '', user.email_normalized);
-    if (invalid) return c.text(invalid, 400);
-    const replacement = await users.changePassword(user.id, await passwords.hash(data.newPassword));
-    await issueSession(c, session, {
-      userId: replacement.id,
-      sessionVersion: replacement.session_version,
-    });
+    const changed = await identity.changePassword(
+      currentUser(c).id,
+      data.currentPassword ?? '',
+      data.newPassword ?? '',
+    );
+    if (!changed.ok) return c.text(passwordChangeMessage(changed.error), 400);
+    // Re-issue this browser's cookie at the new session version; every other session is revoked.
+    const { id, sessionVersion } = changed.value;
+    await issueSession(c, session, { userId: id, sessionVersion });
     return c.redirect('/profile', 303);
   });
 }

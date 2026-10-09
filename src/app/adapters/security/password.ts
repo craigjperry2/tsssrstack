@@ -1,3 +1,4 @@
+import type { PasswordHasher } from '../../application/ports/password-hasher.ts';
 const encoder = new TextEncoder();
 const parameters = { name: 'Argon2id', memory: 65536, passes: 3, parallelism: 1 } as const;
 // WebCrypto Argon2 ("Modern Algorithms in WebCrypto"); Deno's lib types don't declare it yet.
@@ -19,7 +20,7 @@ function unb64(value: string): Uint8Array {
     '='.repeat((4 - value.length % 4) % 4);
   return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 }
-export function parsePhc(value: string): { salt: Uint8Array; hash: Uint8Array } | undefined {
+function parsePhc(value: string): { salt: Uint8Array; hash: Uint8Array } | undefined {
   const m = /^\$argon2id\$v=19\$m=(\d+),t=(\d+),p=(\d+)\$([A-Za-z0-9_-]+)\$([A-Za-z0-9_-]+)$/u.exec(
     value,
   );
@@ -41,11 +42,11 @@ async function derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
   const algorithm: Argon2Params = { ...parameters, nonce: saltCopy };
   return new Uint8Array(await crypto.subtle.deriveBits(algorithm, key, 256));
 }
-export async function hashPassword(password: string): Promise<string> {
+async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   return `$argon2id$v=19$m=65536,t=3,p=1$${b64(salt)}$${b64(await derive(password, salt))}`;
 }
-export async function verifyPassword(password: string, phc: string): Promise<boolean> {
+async function verifyPassword(password: string, phc: string): Promise<boolean> {
   const parsed = parsePhc(phc);
   if (!parsed) return false;
   const actual = await derive(password, parsed.salt);
@@ -55,3 +56,13 @@ export async function verifyPassword(password: string, phc: string): Promise<boo
   }
   return difference === 0;
 }
+
+// A valid hash of an unguessable value, verified against when there is no stored hash so that
+// the work done does not depend on whether the account exists.
+const dummyHash =
+  '$argon2id$v=19$m=65536,t=3,p=1$MDEyMzQ1Njc4OWFiY2RlZg$6VcbVD4_7DRhmJYF2BLo1MoROci40oH3Yx4kqPFSRo0';
+
+export const argon2PasswordHasher: PasswordHasher = {
+  hash: hashPassword,
+  verify: (password, hash) => verifyPassword(password, hash ?? dummyHash),
+};

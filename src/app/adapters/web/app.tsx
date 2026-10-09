@@ -19,10 +19,8 @@ export function createWebApp(deps: WebDeps): Hono<WebEnv> {
   app.use('*', csrf({ origin: deps.appOrigin }));
   app.use('*', async (c, next) => {
     const claims = await readSession(c, deps.session);
-    if (claims) {
-      const user = await deps.users.byId(claims.userId);
-      if (user && user.session_version === claims.sessionVersion) c.set('user', user);
-    }
+    const user = claims && await deps.identity.resolve(claims.userId, claims.sessionVersion);
+    if (user) c.set('user', user);
     await next();
   });
 

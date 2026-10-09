@@ -1,24 +1,21 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import type { Child } from 'hono/jsx';
+import type { IdentityService } from '../../application/identity.ts';
 import type { TaskService } from '../../application/tasks.ts';
-import type { User, users } from '../persistence/repositories.ts';
+import type { Principal } from '../../domain/identity.ts';
 import type { SessionSettings } from './session.ts';
 import { Layout } from './views/layout.tsx';
 
 // Everything the web adapter needs from the rest of the system, supplied by main.tsx.
 export type WebDeps = Readonly<{
-  users: ReturnType<typeof users>;
+  identity: IdentityService;
   tasks: TaskService;
-  passwords: Readonly<{
-    hash(password: string): Promise<string>;
-    verify(password: string, hash: string): Promise<boolean>;
-  }>;
   session: SessionSettings;
   appOrigin: string;
   ready(): Promise<boolean>;
 }>;
 
-export type WebEnv = { Variables: { user?: User; requestId: string } };
+export type WebEnv = { Variables: { user?: Principal; requestId: string } };
 export type AppContext = Context<WebEnv>;
 
 export const page = (c: AppContext, title: string, body: Child) =>
@@ -38,4 +35,4 @@ export const requireUser: MiddlewareHandler<WebEnv> = async (c, next) => {
 };
 
 // Only valid behind requireUser.
-export const currentUser = (c: AppContext): User => c.get('user')!;
+export const currentUser = (c: AppContext): Principal => c.get('user')!;
