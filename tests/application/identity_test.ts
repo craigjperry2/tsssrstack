@@ -1,3 +1,4 @@
+import { test } from 'node:test';
 import { identityService } from '../../src/app/application/identity.ts';
 import { assert, assertEquals } from '../support/assert.ts';
 import { fakePasswords, memoryUserRepository } from '../support/fakes.ts';
@@ -9,7 +10,7 @@ const setup = () => {
   return { users, passwords, identity: identityService({ users, passwords }) };
 };
 
-Deno.test('registration stores a hash and never replaces an existing account', async () => {
+test('registration stores a hash and never replaces an existing account', async () => {
   const { users, identity } = setup();
   const registered = await identity.register(' Person@Example.TEST ', password);
   assert(registered.ok, 'registered');
@@ -22,13 +23,13 @@ Deno.test('registration stores a hash and never replaces an existing account', a
   assertEquals((await users.findById(registered.value.id))?.passwordHash, `hashed:${password}`);
 });
 
-Deno.test('registration reports the first problem with the email, then the password', async () => {
+test('registration reports the first problem with the email, then the password', async () => {
   const { identity } = setup();
   assertEquals(await identity.register('nope', 'short'), { ok: false, error: 'invalidEmail' });
   assertEquals(await identity.register('a@b.test', 'short'), { ok: false, error: 'length' });
 });
 
-Deno.test('an unknown email still costs a password verification', async () => {
+test('an unknown email still costs a password verification', async () => {
   const { passwords, identity } = setup();
   assertEquals(await identity.logIn('who@example.test', password), {
     ok: false,
@@ -38,7 +39,7 @@ Deno.test('an unknown email still costs a password verification', async () => {
   assertEquals(passwords.verified, [undefined]);
 });
 
-Deno.test('a password change revokes sessions at the previous version', async () => {
+test('a password change revokes sessions at the previous version', async () => {
   const { identity } = setup();
   const registered = await identity.register('person@example.test', password);
   assert(registered.ok, 'registered');

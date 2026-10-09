@@ -1,3 +1,4 @@
+import { test } from 'node:test';
 import { taskService } from '../../src/app/application/tasks.ts';
 import { assertEquals } from '../support/assert.ts';
 import { memoryTaskRepository } from '../support/fakes.ts';
@@ -7,7 +8,7 @@ const clock = { now: () => new Date('2026-10-09T23:59:59Z') };
 const owner = 1;
 const other = 2;
 
-Deno.test('invalid task input never reaches the repository', async () => {
+test('invalid task input never reaches the repository', async () => {
   const tasks = taskService({ tasks: memoryTaskRepository(), clock });
   assertEquals(await tasks.add(owner, { title: ' ', description: '', dueDate: '' }), {
     ok: false,
@@ -16,7 +17,7 @@ Deno.test('invalid task input never reaches the repository', async () => {
   assertEquals(await tasks.list(owner), []);
 });
 
-Deno.test('adding a task stores the validated values', async () => {
+test('adding a task stores the validated values', async () => {
   const tasks = taskService({ tasks: memoryTaskRepository(), clock });
   assertEquals(
     (await tasks.add(owner, { title: '  Buy milk ', description: '', dueDate: '' })).ok,
@@ -26,7 +27,7 @@ Deno.test('adding a task stores the validated values', async () => {
   assertEquals([task.title, task.description, task.completed], ['Buy milk', null, false]);
 });
 
-Deno.test("commands on another owner's task report notFound and change nothing", async () => {
+test("commands on another owner's task report notFound and change nothing", async () => {
   const tasks = taskService({ tasks: memoryTaskRepository(), clock });
   await tasks.add(owner, { title: 'Private', description: '', dueDate: '' });
   const [{ id }] = await tasks.list(owner);
@@ -41,7 +42,7 @@ Deno.test("commands on another owner's task report notFound and change nothing",
   assertEquals(await tasks.find(owner, task.id), task);
 });
 
-Deno.test('listing judges every task against the UTC date of the clock', async () => {
+test('listing judges every task against the UTC date of the clock', async () => {
   const tasks = taskService({ tasks: memoryTaskRepository(), clock });
   const add = (title: string, dueDate: string) =>
     tasks.add(owner, { title, description: '', dueDate });
@@ -62,7 +63,7 @@ Deno.test('listing judges every task against the UTC date of the clock', async (
   ]);
 });
 
-Deno.test('listing reads the clock once, so midnight cannot split one list', async () => {
+test('listing reads the clock once, so midnight cannot split one list', async () => {
   let reads = 0;
   // Just before midnight on the first read, just after it on any later read.
   const countingClock = {

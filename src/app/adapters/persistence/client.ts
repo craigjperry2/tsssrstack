@@ -18,5 +18,7 @@ export const createSql = (databaseUrl: string) =>
   });
 // What repositories need: a pool or a transaction, so callers can group operations atomically.
 export type Db = Pick<Sql, 'file'>;
-// The one way to load SQL: a parameterised .sql file next to this module.
-export const queryPath = (name: string) => new URL(`./sql/${name}.sql`, import.meta.url).pathname;
+// The one way to load SQL: a parameterised .sql file in sql/ next to this module. The path is
+// relative to the repository root, the working directory, like the static files and migrations,
+// so it stays correct when the code runs from a build output directory.
+export const queryPath = (name: string) => `src/app/adapters/persistence/sql/${name}.sql`;
