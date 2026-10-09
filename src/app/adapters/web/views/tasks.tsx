@@ -1,14 +1,7 @@
 import { type FC, Fragment } from 'hono/jsx';
 import type { Task } from '../../persistence/repositories.ts';
-import Sqids from 'sqids';
-const sqids = new Sqids({
-  alphabet: 'nTjWkP2QGBVqby6Eo3aONFwKADZ84SUYdL1v0h9fH7gCprRJXe5xismctMluIz',
-  minLength: 10,
-});
-const id = (value: number) => sqids.encode([value]);
-// Datastar expressions are built only from server-generated URLs, never from user input.
-const postExpr = (url: string) => `@post('${url}', {contentType: 'form'})`;
-const getExpr = (url: string) => `@get('${url}')`;
+import { getExpr, postExpr } from '../datastar.ts';
+import { encodePublicId as id } from '../public-id.ts';
 type Values = { title?: string; description?: string };
 type Errors = Record<string, string>;
 
@@ -192,4 +185,3 @@ export const App: FC<
       )}
   </div>
 );
-export const appSqids = sqids;

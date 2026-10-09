@@ -109,7 +109,7 @@ migrate() {
 
 cache_deno_deps() {
   deno install
-  deno cache src/app/main.tsx src/app/adapters/persistence/migrate.ts tests/*.ts
+  deno cache src/app/main.tsx src/app/adapters/persistence/migrate.ts $(find tests -name '*.ts' -o -name '*.tsx')
 }
 
 create_env() {

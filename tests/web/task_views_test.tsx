@@ -1,5 +1,6 @@
-import { App, appSqids, ClosedEditor, TaskEditor } from '../src/app/adapters/web/views/app.tsx';
-import type { Task } from '../src/app/adapters/persistence/repositories.ts';
+import { App, ClosedEditor, TaskEditor } from '../../src/app/adapters/web/views/tasks.tsx';
+import { encodePublicId } from '../../src/app/adapters/web/public-id.ts';
+import type { Task } from '../../src/app/adapters/persistence/repositories.ts';
 const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message);
 };
@@ -20,19 +21,19 @@ Deno.test('tasks render as a read-only table, not edit forms', async () => {
   assert(count(html, /<textarea/g) === 1, 'rows must not contain description textareas');
   assert(html.includes('<s>Buy milk</s>'), 'completed tasks are struck through');
   assert(html.includes('&lt;b&gt;Write report&lt;/b&gt;'), 'titles are escaped');
-  const editUrl = `/tasks/${appSqids.encode([2])}/edit`;
+  const editUrl = `/tasks/${encodePublicId(2)}/edit`;
   assert(html.includes(`@get(&#39;${editUrl}&#39;)`), 'each row offers an Edit action');
 });
 
 Deno.test('every task has a closed editor row that fat morphs leave alone', async () => {
   const html = await render();
-  const editor = `<tr id="edit-${appSqids.encode([1])}" data-ignore-morph="true" hidden=""></tr>`;
+  const editor = `<tr id="edit-${encodePublicId(1)}" data-ignore-morph="true" hidden=""></tr>`;
   assert(html.includes(editor), 'closed editor placeholder with data-ignore-morph');
   assert(String(await <ClosedEditor taskId={1} />) === editor, 'Cancel/Save restore it');
 });
 
 Deno.test('the task editor is a form that keeps submitted values and shows errors', async () => {
-  const prefix = `edit-${appSqids.encode([1])}`;
+  const prefix = `edit-${encodePublicId(1)}`;
   const fresh = String(await <TaskEditor task={items[0]} />);
   assert(fresh.includes(`<tr id="${prefix}" data-ignore-morph="true">`), 'editor survives morphs');
   assert(fresh.includes(`id="${prefix}-title" name="title" value="Buy milk"`), 'current title');
@@ -48,7 +49,7 @@ Deno.test('the task editor is a form that keeps submitted values and shows error
   assert(html.includes(`id="${prefix}-title" name="title" value="" aria-invalid="true"`), 'title');
   assert(html.includes('>Changed</textarea>'), 'submitted description is kept');
   assert(html.includes('<li>Bad</li>'), 'edit errors are shown in the editor');
-  assert(html.includes(`@get(&#39;/tasks/${appSqids.encode([1])}&#39;)`), 'cancel action');
+  assert(html.includes(`@get(&#39;/tasks/${encodePublicId(1)}&#39;)`), 'cancel action');
 });
 
 Deno.test('add form keeps values and shows errors after validation failure', async () => {
