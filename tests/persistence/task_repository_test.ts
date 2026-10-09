@@ -12,7 +12,10 @@ const details = (title: string, description = '', dueDate = '') => {
   return parsed.value;
 };
 const newOwner = async (db: Db) =>
-  (await userRepository(db).create(uniqueEmail('owner') as EmailAddress, 'hash'))!.id;
+  (await userRepository(db).create(
+    uniqueEmail('owner') as EmailAddress,
+    '$argon2id$v=19$m=65536,t=3,p=1$c2FsdA$aGFzaA',
+  ))!.id;
 
 dbTest("task SQL never reads or changes another owner's task", async (db) => {
   const tasks = taskRepository(db);

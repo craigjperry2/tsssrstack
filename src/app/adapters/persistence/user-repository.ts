@@ -9,7 +9,8 @@ type UserRow = {
   session_version: number;
 };
 
-// Emails were normalised by the domain before they were stored.
+// Emails were normalised by the domain before they were stored, and the app.email_address domain
+// refuses anything unnormalised.
 const toAccount = (row: UserRow): Account => ({
   id: row.id,
   email: row.email_normalized as EmailAddress,

@@ -5,6 +5,9 @@ function parseInt8(raw: string): number {
   if (!Number.isSafeInteger(value)) throw new RangeError(`int8 value out of range: ${raw}`);
   return value;
 }
+// Transactions use PostgreSQL's default READ COMMITTED on purpose. Every invariant is on a single
+// row (domains, row triggers) or a unique index (email), so no read-then-write can skew. A rule
+// spanning rows, such as a per-user task quota, would need SERIALIZABLE plus retry (docs/adr/0004).
 export const createSql = (databaseUrl: string) =>
   postgres(databaseUrl, {
     max: 10,

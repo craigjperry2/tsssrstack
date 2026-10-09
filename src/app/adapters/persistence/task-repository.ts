@@ -13,8 +13,8 @@ type TaskRow = {
   is_completed: boolean;
 };
 
-// Stored values were validated on the way in, and the table's CHECK constraints mirror the
-// domain rules, so rows are trusted to satisfy the value types.
+// Stored values were validated on the way in, and the columns' PostgreSQL domains refuse anything
+// the value types would reject (migrations/003, docs/adr/0004), so rows are trusted to satisfy them.
 const toTask = (row: TaskRow): Task => ({
   id: row.id,
   ownerId: row.user_id,
