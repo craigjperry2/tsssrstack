@@ -421,7 +421,7 @@ Before pushing, run the same checks CI runs (`.github/workflows/ci.yml`):
 deno fmt --check
 deno lint
 deno check src/app/main.tsx
-deno test
+deno task test   # set DATABASE_URL to a migrated database to include the repository tests
 deno audit
 (cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS)
 ```

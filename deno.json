@@ -13,7 +13,7 @@
     "start": "deno run --ignore-env --allow-env=ENV,APP_ORIGIN,DATABASE_URL,SESSION_SECRET,PORT,HOST,LOG_LEVEL,OTEL_DENO,OTEL_EXPORTER_OTLP_ENDPOINT,OTEL_EXPORTER_OTLP_PROTOCOL --allow-net --allow-read=src/app/static,src/app/adapters/persistence/sql src/app/main.tsx",
     "migrate": "deno run --ignore-env --allow-env=DATABASE_URL --allow-net --allow-read=migrations src/app/adapters/persistence/migrate.ts",
     "check": "deno check src/app/main.tsx",
-    "test": "deno test --allow-env --allow-net --allow-read"
+    "test": "deno test --ignore-env --allow-env=DATABASE_URL --allow-net=127.0.0.1,localhost --allow-read=src/app/adapters/persistence/sql"
   },
   "fmt": {
     "lineWidth": 100,

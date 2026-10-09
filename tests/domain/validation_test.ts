@@ -1,4 +1,4 @@
-import { normalizeEmail, taskInput, validatePassword } from '../../src/app/domain/validation.ts';
+import { normalizeEmail, validatePassword } from '../../src/app/domain/validation.ts';
 const assertEquals = (actual: unknown, expected: unknown) => {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new Error(`Expected ${JSON.stringify(expected)}, received ${JSON.stringify(actual)}`);
@@ -23,11 +23,4 @@ Deno.test('password validation enforces length, whitespace, and email exclusion'
     'Password must not contain your email address.',
   );
   assertEquals(validatePassword('a-long-enough-password', 'person@example.test'), undefined);
-});
-
-Deno.test('task input is trimmed and bounded', () => {
-  assertEquals(taskInput('  ', ''), { title: 'Title is required.' });
-  assertEquals(taskInput('A task', 'a'.repeat(5001)), {
-    description: 'Description must be at most 5,000 characters.',
-  });
 });

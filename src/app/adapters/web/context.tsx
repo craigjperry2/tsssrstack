@@ -1,13 +1,14 @@
 import type { Context, MiddlewareHandler } from 'hono';
 import type { Child } from 'hono/jsx';
-import type { tasks, User, users } from '../persistence/repositories.ts';
+import type { TaskService } from '../../application/tasks.ts';
+import type { User, users } from '../persistence/repositories.ts';
 import type { SessionSettings } from './session.ts';
 import { Layout } from './views/layout.tsx';
 
 // Everything the web adapter needs from the rest of the system, supplied by main.tsx.
 export type WebDeps = Readonly<{
   users: ReturnType<typeof users>;
-  tasks: ReturnType<typeof tasks>;
+  tasks: TaskService;
   passwords: Readonly<{
     hash(password: string): Promise<string>;
     verify(password: string, hash: string): Promise<boolean>;
