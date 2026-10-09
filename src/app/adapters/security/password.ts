@@ -64,5 +64,9 @@ const dummyHash =
 
 export const argon2PasswordHasher: PasswordHasher = {
   hash: hashPassword,
-  verify: (password, hash) => verifyPassword(password, hash ?? dummyHash),
+  async verify(password, hash) {
+    // Always do the work, and only then refuse a match against the dummy hash.
+    const matched = await verifyPassword(password, hash ?? dummyHash);
+    return hash !== undefined && matched;
+  },
 };
