@@ -19,8 +19,16 @@
   width: auto;
   margin: 0 0 0 0.25rem;
 }
-/* Application-owned compact button variant; Pico 2 has no size modifiers. */
+/* Pico gives forms a bottom margin for document flow; the nav is a single row, so keep
+   the logout form flush with its neighbours. */
+nav form {
+  margin-bottom: 0;
+}
+/* Application-owned compact button variant; Pico 2 has no size modifiers. The explicit
+   margin reset out-specifies Pico's [type='submit'] flow margin, which would otherwise
+   push buttons off the nav row. */
 .btn-sm {
   padding: 0.2rem 0.6rem;
   font-size: 0.8rem;
+  margin-bottom: 0;
 }
