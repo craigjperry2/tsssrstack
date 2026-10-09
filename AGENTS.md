@@ -355,29 +355,24 @@ Treat raw HTML rendering as a privileged operation.
 
 ## Project Shape
 
+The code follows ports and adapters. [ARCHITECTURE.md](ARCHITECTURE.md) is the canonical map of
+directories, layers and ports, and `docs/adr/` records the decisions behind them. In short:
+
 ```text
-src/
-  main.ts
-  domain/
-  application/
-  web/
-    routes/
-    components/
-    pages/
-  db/
-
-sql/
-  users/
-  orders/
-
-static/
-  datastar.js
-
-migrations/
-
-deno.json
-deno.lock
+src/app/main.tsx, config.ts   composition root (nothing imports it)
+src/app/domain/               entities, value objects, rules: pure TypeScript
+src/app/application/          use cases; ports/ holds the interfaces adapters implement
+src/app/adapters/<name>/      web (Hono, JSX, Datastar), persistence (postgres.js, sql/), security
 ```
+
+Dependencies point inwards only: domain → domain; application → application, domain; an adapter
+→ itself, application, domain and packages. Adapters never import each other. The domain and
+application layers use no JSX, `Deno.*`, `fetch`, `Date.now()`/`new Date()` or `Math.random()`;
+inject those through a port. `deno lint` enforces this with `tools/architecture_lint.ts`.
+
+When adding a feature, work inwards-out: domain, application (and port), persistence, web,
+then wiring in `main.tsx`. Update ARCHITECTURE.md when the structure or vocabulary changes, and
+add an ADR for a decision a future reader would question.
 
 ---
 

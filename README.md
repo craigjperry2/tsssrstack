@@ -28,15 +28,23 @@ When `ENV=development`, the server seeds a convenience account on startup, `dev@
 environments and never overwrites an existing account's password.
 
 The Nix shell supplies Deno, Docker tooling, and PostgreSQL client utilities on NixOS and
-nix-darwin. `deno task check`, `deno fmt --check`, `deno lint`, and `deno test` are the normal
-verification commands.
+nix-darwin. `deno task check`, `deno fmt --check`, `deno lint`, and `deno task test` are the normal
+verification commands. Set `DATABASE_URL` to a migrated database to include the repository contract
+tests; without it they are reported as ignored.
 
-## Architecture and constraints
+## Architecture
 
-Task forms are semantic HTML, but their commands require Datastar and submit form-encoded POSTs.
-Each successful command or business validation error produces exactly one `datastar-patch-elements`
-event containing the entire escaped `#app` region. There is no persistent SSE endpoint, broadcaster,
-SPA, ORM, Node runtime, or CDN asset dependency.
+The code follows ports and adapters around a small domain core: `domain/` and `application/` are
+plain TypeScript, and the web, persistence and security adapters plug into ports defined by the
+application. A `deno lint` plugin enforces the dependency rule. See
+[ARCHITECTURE.md](ARCHITECTURE.md) for the map, the vocabulary and how to add a feature, and
+[`docs/adr/`](docs/adr) for the decisions behind it.
+
+Task commands are Datastar form-encoded POSTs answered by one finite SSE response. By default that
+response is a single `datastar-patch-elements` event re-rendering the whole escaped `#app` region.
+Two exceptions are deliberate: editor rows are replaced on their own so open editors survive other
+actions, and a successful add also patches signals to clear the form. There is no persistent SSE
+endpoint, broadcaster, SPA, ORM, Node runtime, or CDN asset dependency.
 
 Passwords are Argon2id PHC strings using Deno Web Crypto. Session cookies are signed, HTTP-only,
 SameSite Lax, and fixed to twelve hours; changing a password increments the persisted session

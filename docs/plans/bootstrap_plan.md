@@ -1,3 +1,7 @@
+> **Historical.** This is the plan the repository was bootstrapped from. The current architecture
+> is described in [ARCHITECTURE.md](../../ARCHITECTURE.md), which supersedes this plan where they
+> differ.
+
 # tsssrstack bootstrap implementation plan
 
 ## 1. Purpose and authority
