@@ -404,6 +404,32 @@ Avoid dependencies added only for convenience around trivial code.
 
 ---
 
+## Change Workflow
+
+`main` is protected by the `main` ruleset (source of truth: `.github/rulesets/main.json`):
+
+- no direct pushes, force pushes, or branch deletion
+- every change lands through a pull request
+- the CI checks `deno (ubuntu-latest)` and `deno (macos-latest)` must pass before merging
+
+Work on a branch, push it, and open a pull request against `main`. Never push to `main` directly
+or try to bypass the ruleset.
+
+Before pushing, run the same checks CI runs (`.github/workflows/ci.yml`):
+
+```bash
+deno fmt --check
+deno lint
+deno check src/app/main.tsx
+deno test
+```
+
+If you rename the CI workflow job or change its matrix, update the required status checks in
+`.github/rulesets/main.json` and the live ruleset in the same change. Otherwise every pull request
+waits forever for a check that no longer exists.
+
+---
+
 ## Operating Principles
 
 Prefer:
