@@ -11,7 +11,7 @@ import { hashPassword, verifyPassword } from './adapters/security/password.ts';
 import { createSql } from './adapters/persistence/client.ts';
 import { type Task, tasks, type User, users } from './adapters/persistence/repositories.ts';
 import { devUserEmail, devUserPassword, seedDevUser } from './adapters/persistence/seed.ts';
-import { Layout } from './adapters/web/views/layout.tsx';
+import { bulmaCss, bulmaHref, Layout } from './adapters/web/views/layout.tsx';
 import { App, appSqids, ClosedEditor, TaskEditor } from './adapters/web/views/app.tsx';
 import { Auth } from './adapters/web/views/auth.tsx';
 import { handleError } from './adapters/web/errors.ts';
@@ -179,6 +179,10 @@ app.use('*', async (c, next) => {
     }
   }
   await next();
+});
+app.get(bulmaHref, (c) => {
+  c.header('Cache-Control', 'public, max-age=31536000, immutable');
+  return c.body(bulmaCss, 200, { 'Content-Type': 'text/css; charset=utf-8' });
 });
 // serveStatic joins root with the full request path, which already starts with /static.
 app.use('/static/*', serveStatic({ root: './src/app' }));

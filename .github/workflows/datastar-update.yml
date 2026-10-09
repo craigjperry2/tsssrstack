@@ -1,0 +1,68 @@
+name: Datastar update
+# Datastar 1.x is not published to npm or JSR, so Dependabot cannot see it. This opens a pull
+# request that re-vendors bundles/datastar.js whenever upstream publishes a new release.
+on:
+  schedule:
+    - cron: '23 5 * * 1'
+  workflow_dispatch:
+concurrency:
+  group: datastar-update
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the update branch
+      pull-requests: write # open the pull request
+      actions: write # dispatch CI, which pull requests opened with GITHUB_TOKEN do not trigger
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Open a pull request for a new Datastar release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          vendor=src/app/static/vendor
+          tag=$(gh api repos/starfederation/datastar/releases/latest --jq .tag_name)
+          new=${tag#v}
+          # The tag is upstream data: accept only a plain version before using it in paths.
+          if ! [[ $new =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected Datastar release tag: $tag" >&2
+            exit 1
+          fi
+          current=$(sed -nE 's/^[0-9a-f]{64}  datastar-(.+)\.js$/\1/p' "$vendor/SHA256SUMS")
+          if [[ $new == "$current" ]]; then
+            echo "Datastar $current is up to date."
+            exit 0
+          fi
+          branch="deps/datastar-$new"
+          if [[ -n $(gh pr list --head "$branch" --state open --json number --jq '.[].number') ]]; then
+            echo "A pull request for $branch is already open."
+            exit 0
+          fi
+
+          git switch -c "$branch"
+          curl -fsSL "https://raw.githubusercontent.com/starfederation/datastar/$tag/bundles/datastar.js" \
+            -o "$vendor/datastar-$new.js"
+          git rm -q "$vendor/datastar-$current.js"
+          old=${current//./\\.}
+          sum=$(cd "$vendor" && sha256sum "datastar-$new.js")
+          sed -i "s/^[0-9a-f]\{64\}  datastar-$old\.js\$/$sum/" "$vendor/SHA256SUMS"
+          sed -i "/^| \`datastar-/ s/$old/$new/g" "$vendor/PROVENANCE.md"
+          sed -i "s/datastar-$old\.js/datastar-$new.js/g" src/app/adapters/web/views/layout.tsx
+          (cd "$vendor" && sha256sum --check --strict SHA256SUMS)
+
+          git add -A "$vendor" src/app/adapters/web/views/layout.tsx
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "chore(deps): vendor Datastar $tag"
+          gh auth setup-git
+          git push --force origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "chore(deps): vendor Datastar $tag" \
+            --body "Re-vendors \`bundles/datastar.js\` from Datastar [$tag](https://github.com/starfederation/datastar/releases/tag/$tag), replacing $current. Review the release notes for breaking changes before merging."
+          gh workflow run ci.yml --ref "$branch"

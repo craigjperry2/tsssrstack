@@ -9,7 +9,8 @@ Datastar applies complete `#app` morphs returned in finite SSE responses for tas
 - Account registration, login/logout, password change, signed stateless sessions, central CSRF
   protection, CSP, and user-scoped task CRUD.
 - PostgreSQL migrations and parameterised `.sql` files used through postgres.js.
-- Local Bulma CSS and Datastar 1.0.2 assets; the browser makes no CDN requests.
+- Bulma CSS (npm, served by the app) and vendored Datastar assets; the browser makes no CDN
+  requests.
 - Nginx reverse proxy at `http://localhost:8080`, with proxy buffering disabled for finite SSE
   responses. The Deno host process listens on port 8000 only so the local Nginx container can reach
   it.

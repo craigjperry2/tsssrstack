@@ -1,0 +1,14 @@
+name: Dependency review
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  # Fails pull requests that add dependencies with known vulnerabilities (from deno.lock,
+  # workflow actions and other manifests in the dependency graph).
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
