@@ -1,6 +1,8 @@
 import postgres from 'postgres';
-const url = Deno.env.get('DATABASE_URL');
-if (!url) throw new Error('DATABASE_URL is required');
+// Migrations run as the schema owner. The application itself connects with DATABASE_URL, as a
+// login role limited to app_runtime's grants, and never sees this URL.
+const url = Deno.env.get('MIGRATION_DATABASE_URL');
+if (!url) throw new Error('MIGRATION_DATABASE_URL is required');
 const sql = postgres(url, { max: 1 });
 try {
   await sql`SELECT pg_advisory_lock(829225924001)`;

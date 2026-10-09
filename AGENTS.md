@@ -374,6 +374,12 @@ When adding a feature, work inwards-out: domain, application (and port), persist
 then wiring in `main.tsx`. Update ARCHITECTURE.md when the structure or vocabulary changes, and
 add an ADR for a decision a future reader would question.
 
+PostgreSQL guards the invariants; the TypeScript domain explains them (ADR 0004). Each domain
+value type needs a matching database domain or constraint that accepts everything the TypeScript
+accepts (never stricter, so a valid value never becomes a 500). Each new table states its
+`app_runtime` grants in its migration. The app connects with `DATABASE_URL` as a member of
+`app_runtime`; only `deno task migrate` uses the owner's `MIGRATION_DATABASE_URL`.
+
 ---
 
 ## Dependency Policy

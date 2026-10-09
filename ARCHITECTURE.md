@@ -13,6 +13,8 @@ choices are recorded as [decisions](#decisions).
   I/O. They can be tested in milliseconds without a server.
 - **Safe by construction.** SQL lives only in parameterised `.sql` files, HTML is built only with
   Hono JSX, and CSRF, CSP and sessions are enforced centrally.
+- **PostgreSQL guards the invariants.** Domains, triggers and grants refuse invalid states whatever
+  writes the data; the TypeScript domain checks first and explains the problem.
 - **Few dependencies.** Hono, Datastar, postgres.js, plus Bulma and Sqids. There is no ORM, no DI
   container and no Node runtime.
 
@@ -92,7 +94,8 @@ src/app/
 
   static/vendor/            vendored Datastar, checked against SHA256SUMS
 
-migrations/                 ordered, checksummed SQL migrations
+migrations/                 ordered, checksummed SQL migrations: tables, domains, triggers, grants
+infra/postgres/dev-roles.sql  development-only runtime login (app_web) for setup, compose and CI
 tests/                      domain/, application/, persistence/, security/, web/, architecture
 tools/architecture_lint.ts  deno lint plugin enforcing the dependency rule
 ```
@@ -157,19 +160,56 @@ the owner's id.
 | Account         | Credentials for one normalised email address                                               |
 | Principal       | The signed-in user as the rest of the app sees them: id, email, session version            |
 | Session version | A counter on the account. A password change increments it, revoking older cookies          |
+| Runtime role    | `app_runtime`: the app's database privileges. Owners, ids and history are read-only        |
+| Migration role  | The schema owner. It runs migrations; the app never connects as it                         |
 
 ## Ports
 
 | Port             | Implemented by                         | Why it is a port                                                |
 | ---------------- | -------------------------------------- | --------------------------------------------------------------- |
 | `TaskRepository` | `adapters/persistence/task-repository` | Storage. The contract includes owner scoping and atomic changes |
-| `UserRepository` | `adapters/persistence/user-repository` | Storage. The contract includes the atomic session-version bump  |
+| `UserRepository` | `adapters/persistence/user-repository` | Storage, including the session-version bump (a trigger)         |
 | `PasswordHasher` | `adapters/security/password`           | Argon2id is slow by design; use cases are tested with a fake    |
 | `Clock`          | `systemClock` in `main.tsx`            | Overdue depends on today; tests fix the date                    |
 
 These are deliberately not ports: sessions and cookies (web concerns), Sqids (URL formatting),
 rendering, and readiness probes. The use cases themselves are plain functions, so they need no
 inbound port interfaces.
+
+## Persistence: the database guards the invariants
+
+The domain validates first and returns typed problems; PostgreSQL refuses invalid states on its own,
+as the last line of defence ([ADR 0004](docs/adr/0004-postgresql-guards-the-invariants.md)). Every
+database check accepts everything the TypeScript domain accepts, so a TS-valid value never becomes a
+500, and rejects what the domain rejects wherever that is practical. Rules that depend on time, such
+as overdue, stay in the domain because they need the `Clock` port.
+
+| Domain rule                | TypeScript (explains) | PostgreSQL (guards)                                      |
+| -------------------------- | --------------------- | -------------------------------------------------------- |
+| Normalised email           | `parseEmail`          | domain `app.email_address`, unique index                 |
+| Passwords are only hashed  | `PasswordHasher`      | domain `app.password_hash` (Argon2id PHC shape)          |
+| Title, description         | `parseTaskTitle`, …   | domains `app.task_title`, `app.task_description`         |
+| Due date is a calendar day | `parseCalendarDate`   | domain `app.calendar_date` (0001-01-01 to 9999-12-31)    |
+| Password change revokes    | `identityService`     | trigger: writing `password_hash` bumps `session_version` |
+| `updated_at` is current    | (not modelled)        | trigger on every update                                  |
+| Owner, ids, history fixed  | `Task` is readonly    | column grants: `app_runtime` cannot update them          |
+
+**Roles.** Migrations run as the schema owner from `MIGRATION_DATABASE_URL` (`deno task migrate`).
+The app and the tests connect with `DATABASE_URL` as a login role that is a member of the NOLOGIN
+role `app_runtime`. Migration 003 creates `app_runtime` if needed and grants it exactly what the
+statements in `adapters/persistence/sql/` use: no DDL, no account deletion, no access to
+`schema_migrations`. In development the login is `app_web`, from
+[`infra/postgres/dev-roles.sql`](infra/postgres/dev-roles.sql), with a well-known password. **In
+production, operators create their own login role with a real secret and run
+`GRANT app_runtime TO <login>;`.** If they create `app_runtime` before the first migration, the
+migration role needs no CREATEROLE.
+
+**Isolation.** Transactions run at READ COMMITTED. Every invariant is on one row or enforced by a
+unique index, so there is no read-then-write write skew. A rule spanning rows, such as a per-user
+task quota, would need SERIALIZABLE plus retry.
+
+**Indexes** follow access paths and hold only columns that never change after insert, so updates
+stay HOT-eligible. `COMMENT ON` records the meaning of each domain, table and non-obvious column.
 
 ## A request, end to end
 
@@ -182,7 +222,7 @@ web        routes/tasks: form fields → TaskInput (raw strings)
 app        taskService.add(ownerId, input)
 domain       parseTaskDetails → Result<TaskDetails, TaskProblems>
 app          invalid → return the problems; valid → TaskRepository.add(ownerId, details)
-persist    sql/tasks/create.sql with $1 … $4
+persist    sql/tasks/create.sql with $1 … $4; the column domains check the values again
 app        taskService.list reads the Clock once and derives overdue for each task
 web        render <App> with JSX from the re-queried list, send one finite SSE response:
              datastar-patch-elements (all of #app) + datastar-patch-signals (clear the form)
@@ -211,8 +251,11 @@ There are two deliberate exceptions, both in `routes/tasks.tsx`:
 | XSS                    | Hono JSX escaping; no raw HTML APIs                         | `tests/web/task_views_test.tsx`                                         |
 | Datastar expressions   | built only from server URLs in `datastar.ts`                | `tests/web/task_views_test.tsx`                                         |
 | SQL injection          | `.sql` files + parameters via `queryPath()`                 | code review; the core cannot import postgres.js                         |
-| Task ownership         | `user_id = $n` in every task statement                      | `tests/persistence/task_repository_test.ts`                             |
+| Task ownership         | `user_id = $n` in every statement; `user_id` is immutable   | `tests/persistence/task_repository_test.ts`, `schema_test.ts`           |
 | Session revocation     | session version checked by `identityService.resolve`        | `tests/application/identity_test.ts`, `tests/web/app_test.ts`           |
+| Revocation in data     | writing `password_hash` bumps `session_version` (trigger)   | `tests/persistence/schema_test.ts`                                      |
+| Stored data validity   | PostgreSQL domains mirroring the value types (ADR 0004)     | `tests/persistence/schema_test.ts`                                      |
+| Least privilege        | the app connects as a member of `app_runtime`               | `tests/persistence/schema_test.ts`                                      |
 | Account enumeration    | one login error; dummy-hash verification for unknown emails | `tests/application/identity_test.ts`, `tests/security/password_test.ts` |
 
 ## Testing
@@ -224,13 +267,16 @@ meaningful.
 | ---------------------------- | ---------------------------- | ------------------------------------------ |
 | `tests/domain`               | value objects and rules      | nothing                                    |
 | `tests/application`          | use cases                    | in-memory ports (`tests/support/fakes.ts`) |
-| `tests/persistence`          | the repository contracts     | real PostgreSQL, rolled back per test      |
+| `tests/persistence`          | repository contracts, guards | real PostgreSQL as the runtime role        |
 | `tests/security`             | the Argon2id adapter         | Web Crypto                                 |
 | `tests/web`                  | HTTP, HTML and SSE behaviour | `createWebApp` with in-memory ports        |
 | `tests/architecture_test.ts` | the lint plugin              | in-memory sources                          |
 
-The repository tests run when `DATABASE_URL` points at a migrated database (CI starts one) and are
-reported as ignored otherwise. Run everything with `deno task test`.
+The persistence tests run when `DATABASE_URL` points at a migrated database (CI starts one) and are
+reported as ignored otherwise. Each runs in a transaction that is rolled back. `DATABASE_URL` must
+be the runtime login, as for the app, not the owner: `schema_test.ts` checks that the guards accept
+every boundary value the domain accepts, refuse invalid rows written with raw SQL, and that the
+runtime role cannot change owners, ids, history or the schema. Run everything with `deno task test`.
 
 ## Adding a feature
 
@@ -240,8 +286,9 @@ inside out:
 1. **Domain.** Add value objects and rules to the owning module, with tests that need nothing.
 2. **Application.** Extend a service, or add a port if the feature needs something new from outside
    (storage, time, email). Test it against an in-memory implementation.
-3. **Persistence.** Add a migration, `.sql` files and the row mapping. Add a contract test against
-   PostgreSQL.
+3. **Persistence.** Add a migration, `.sql` files and the row mapping. Give each new value type a
+   matching database domain or constraint that accepts everything the TypeScript accepts, and state
+   a new table's `app_runtime` grants in its migration. Add a contract test against PostgreSQL.
 4. **Web.** Add routes and views that call the service, and wording in `messages.ts`. Return a fat
    morph unless there is a reason not to.
 5. **Wire** any new adapter in `main.tsx`.
@@ -255,6 +302,7 @@ Architecture decision records live in [`docs/adr/`](docs/adr):
 - [0001: Ports and adapters with a small domain core](docs/adr/0001-ports-and-adapters.md)
 - [0002: Server-rendered hypermedia with Datastar](docs/adr/0002-server-rendered-hypermedia-with-datastar.md)
 - [0003: Due dates are calendar days, judged against today in UTC](docs/adr/0003-due-dates-use-utc-calendar-days.md)
+- [0004: PostgreSQL guards the invariants; the TypeScript domain explains them](docs/adr/0004-postgresql-guards-the-invariants.md)
 
 [`docs/plans/bootstrap_plan.md`](docs/plans/bootstrap_plan.md) is the plan the repository was
 bootstrapped from. It is kept for history; where it differs from this document, this document wins.

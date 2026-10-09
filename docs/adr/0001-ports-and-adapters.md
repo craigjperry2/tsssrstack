@@ -41,4 +41,6 @@ a composition root. Dependencies point inwards only. The full rule is in
 - There are a few more files and names than a single-module app needs. A one-field change can touch
   every layer, which is the intended trade.
 - Brands are erased at runtime. They prevent mistakes in TypeScript, not in data that arrives some
-  other way, which is why the database keeps CHECK constraints that mirror the domain rules.
+  other way. The database therefore guards each rule independently, with domains, triggers and
+  grants that accept every value the domain accepts
+  ([0004](0004-postgresql-guards-the-invariants.md)).

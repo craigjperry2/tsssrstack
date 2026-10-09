@@ -8,7 +8,9 @@ cd "$(dirname "${BASH_SOURCE[0]}")/.."
 repo_root="$PWD"
 pg_unit=tsssrstack-postgres
 pg_data="$HOME/.local/share/tsssrstack/postgres"
-database_url=postgres://app:app@127.0.0.1:5432/app
+# The schema owner runs migrations; the app and tests log in as app_web, a member of app_runtime.
+owner_url=postgres://app:app@127.0.0.1:5432/app
+runtime_url=postgres://app_web:app_web@127.0.0.1:5432/app
 
 step() {
   local name=$1 start=$SECONDS
@@ -103,7 +105,10 @@ migrate() {
     "SELECT 1 FROM pg_database WHERE datname = 'app'")" ]]; then
     PGPASSWORD=app createdb -h 127.0.0.1 -U app app
   fi
-  DATABASE_URL="$database_url" deno task migrate
+  # Idempotent: creates the development runtime login (and app_runtime) only if missing.
+  PGPASSWORD=app PGOPTIONS='-c client_min_messages=warning' psql -h 127.0.0.1 -U app -d app -X -q \
+    -v ON_ERROR_STOP=1 -f infra/postgres/dev-roles.sql
+  MIGRATION_DATABASE_URL="$owner_url" deno task migrate
   stop_temporary_postgres
 }
 
@@ -115,6 +120,12 @@ cache_deno_deps() {
 create_env() {
   if [[ -f .env ]]; then
     echo "    .env already exists"
+    # Upgrade a .env written before the runtime role existed: the app moves off the owner login.
+    if ! grep -q '^MIGRATION_DATABASE_URL=' .env; then
+      sed -i "s|^DATABASE_URL=${owner_url}\$|DATABASE_URL=${runtime_url}|" .env
+      echo "MIGRATION_DATABASE_URL=${owner_url}" >>.env
+      echo "    added MIGRATION_DATABASE_URL to .env"
+    fi
     return
   fi
   local secret
@@ -130,8 +141,11 @@ write_agent_notes() {
   services and terminals load it automatically (hook in ~/.bash_profile, see .agents/dev-env.sh).
   \`nix develop -c <cmd>\` works too, the same way CI runs checks.
 - There is no Docker daemon: \`docker compose\` and nginx are not used in orbs.
-- PostgreSQL runs as the systemd unit \`${pg_unit}\` (data in ${pg_data}) at
-  ${database_url}. \`.agents/resume\` starts it; \`.agents/setup\` applies migrations.
+- PostgreSQL runs as the systemd unit \`${pg_unit}\` (data in ${pg_data}). \`.agents/resume\`
+  starts it; \`.agents/setup\` creates the dev roles (infra/postgres/dev-roles.sql) and migrates.
+- The app and tests connect as the least-privilege runtime login: DATABASE_URL=${runtime_url}
+  (app_web, a member of app_runtime). Migrations run as the owner:
+  MIGRATION_DATABASE_URL=${owner_url} deno task migrate
 - Run the app with \`amp orb services ensure\` (service \`app\` in .amp/services.yaml). It sets
   APP_ORIGIN to the portal origin so Hono's CSRF Origin check passes."
 }

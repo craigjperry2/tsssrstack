@@ -21,8 +21,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     env:
-      # A throwaway cluster for the repository contract tests, started below from the Nix shell.
-      DATABASE_URL: postgres://app@127.0.0.1:5432/app
+      # A throwaway cluster for the repository and schema tests, started below from the Nix shell.
+      # Migrations run as the owner; the tests connect as the runtime login, like the app.
+      MIGRATION_DATABASE_URL: postgres://app@127.0.0.1:5432/app
+      DATABASE_URL: postgres://app_web@127.0.0.1:5432/app
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -39,6 +41,7 @@ jobs:
             pg_ctl -D "$RUNNER_TEMP/pg" -l "$RUNNER_TEMP/pg.log" -w start \
               -o "-c listen_addresses=127.0.0.1 -c port=5432 -k $RUNNER_TEMP"
             createdb -h 127.0.0.1 -U app app
+            psql -h 127.0.0.1 -U app -d app -X -q -v ON_ERROR_STOP=1 -f infra/postgres/dev-roles.sql
             deno task migrate'
       - run: nix develop -c deno task test
       - run: nix develop -c deno audit
