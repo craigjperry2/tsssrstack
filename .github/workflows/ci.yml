@@ -1,6 +1,18 @@
 name: CI
-on: [push, pull_request]
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+permissions:
+  contents: read
 jobs:
+  # The job name and matrix produce the required status checks on main:
+  # "deno (ubuntu-latest)" and "deno (macos-latest)". Renaming either requires updating the
+  # "main" ruleset in the repository settings, or every pull request will wait forever.
   deno:
     strategy: { matrix: { os: [ubuntu-latest, macos-latest] } }
     runs-on: ${{ matrix.os }}
