@@ -1,5 +1,7 @@
 // HTTP-level behaviour of the web adapter, driven through createWebApp with in-memory adapters.
+import { identityService } from '../../src/app/application/identity.ts';
 import { assert, assertEquals } from '../support/assert.ts';
+import { fakePasswords, memoryUserRepository } from '../support/fakes.ts';
 import { password, send, sessionCookie, signUp, sseEvents, testApp } from '../support/web.ts';
 
 const publicIds = (html: string) =>
@@ -71,6 +73,28 @@ Deno.test('registration rejects invalid input and duplicate emails', async () =>
   });
   assertEquals(sessionCookie(duplicate), undefined);
   assert((await duplicate.text()).includes('Unable to create that account.'), 'duplicate');
+});
+
+Deno.test('a database failure during registration is a generic 500, not a taken email', async () => {
+  const users = {
+    ...memoryUserRepository(),
+    create: () => Promise.reject(new Error('connection reset')),
+  };
+  const app = testApp({ identity: identityService({ users, passwords: fakePasswords() }) });
+  const logged: string[] = [];
+  const original = console.error;
+  console.error = (message: string) => logged.push(message);
+  try {
+    const response = await send(app, '/register', {
+      fields: { email: 'person@example.test', password },
+    });
+    assertEquals(response.status, 500);
+    assertEquals(await response.text(), 'Internal server error');
+    assertEquals(sessionCookie(response), undefined);
+  } finally {
+    console.error = original;
+  }
+  assert(logged.some((line) => line.includes('connection reset')), 'details are logged');
 });
 
 Deno.test('login failures do not reveal whether the email exists', async () => {

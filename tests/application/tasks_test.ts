@@ -61,3 +61,22 @@ Deno.test('listing judges every task against the UTC date of the clock', async (
     ['Yesterday', true],
   ]);
 });
+
+Deno.test('listing reads the clock once, so midnight cannot split one list', async () => {
+  let reads = 0;
+  // Just before midnight on the first read, just after it on any later read.
+  const countingClock = {
+    now: () =>
+      reads++ === 0 ? new Date('2026-10-09T23:59:59.999Z') : new Date('2026-10-10T00:00:00Z'),
+  };
+  const tasks = taskService({ tasks: memoryTaskRepository(), clock: countingClock });
+  await tasks.add(owner, { title: 'First', description: '', dueDate: '2026-10-09' });
+  await tasks.add(owner, { title: 'Second', description: '', dueDate: '2026-10-09' });
+  assertEquals(reads, 0);
+  const listed = await tasks.list(owner);
+  assertEquals(reads, 1);
+  assertEquals(listed.map((task) => [task.title, task.overdue]), [
+    ['Second', false],
+    ['First', false],
+  ]);
+});
