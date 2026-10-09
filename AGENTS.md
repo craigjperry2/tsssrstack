@@ -422,6 +422,8 @@ deno fmt --check
 deno lint
 deno check src/app/main.tsx
 deno test
+deno audit
+(cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS)
 ```
 
 If you rename the CI workflow job or change its matrix, update the required status checks in

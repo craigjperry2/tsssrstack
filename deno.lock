@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@hono/hono@4.12.31": "4.12.31",
     "npm:@opentelemetry/api@1.9.1": "1.9.1",
+    "npm:bulma@1.0.4": "1.0.4",
     "npm:postgres@3.4.9": "3.4.9",
     "npm:sqids@0.3.0": "0.3.0"
   },
@@ -15,6 +16,9 @@
     "@opentelemetry/api@1.9.1": {
       "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="
     },
+    "bulma@1.0.4": {
+      "integrity": "sha512-Ffb6YGXDiZYX3cqvSbHWqQ8+LkX6tVoTcZuVB3lm93sbAVXlO0D6QlOTMnV6g18gILpAXqkG2z9hf9z4hCjz2g=="
+    },
     "postgres@3.4.9": {
       "integrity": "sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw=="
     },
@@ -26,6 +30,7 @@
     "dependencies": [
       "jsr:@hono/hono@4.12.31",
       "npm:@opentelemetry/api@1.9.1",
+      "npm:bulma@1.0.4",
       "npm:postgres@3.4.9",
       "npm:sqids@0.3.0"
     ]

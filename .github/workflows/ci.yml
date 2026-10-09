@@ -4,6 +4,9 @@ on:
     branches: [main]
   push:
     branches: [main]
+  # The Datastar update workflow dispatches CI on the pull requests it opens, because pull requests
+  # created with GITHUB_TOKEN do not trigger pull_request workflows.
+  workflow_dispatch:
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -16,10 +19,16 @@ jobs:
   deno:
     strategy: { matrix: { os: [ubuntu-latest, macos-latest] } }
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
-      - uses: cachix/install-nix-action@v31
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
       - run: nix develop -c deno fmt --check
       - run: nix develop -c deno lint
       - run: nix develop -c deno check src/app/main.tsx
       - run: nix develop -c deno test
+      - run: nix develop -c deno audit
+      - name: Verify vendored assets match SHA256SUMS
+        run: nix develop -c sh -c 'cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS'
