@@ -16,11 +16,12 @@ import { App, ClosedEditor, TaskEditor } from '../views/tasks.tsx';
 
 // After a successful add, reset the form's data-bind signals; a morph alone cannot clear
 // what the user typed because it only reflects changed value attributes.
-const clearAddForm = patchSignals({ title: '', description: '' });
+const clearAddForm = patchSignals({ title: '', description: '', dueDate: '' });
 
 const taskInput = (data: Record<string, string>): TaskInput => ({
   title: data.title ?? '',
   description: data.description ?? '',
+  dueDate: data.dueDate ?? '',
 });
 const taskId = (c: AppContext) => decodePublicId(c.req.param('publicId') ?? '');
 

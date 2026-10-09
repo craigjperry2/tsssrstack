@@ -1,17 +1,30 @@
+import { utcDateOf } from '../domain/calendar.ts';
 import { err, ok, type Result } from '../domain/shared.ts';
-import { parseTaskDetails, type TaskProblems } from '../domain/task.ts';
+import { isOverdue, parseTaskDetails, type Task, type TaskProblems } from '../domain/task.ts';
+import type { Clock } from './ports/clock.ts';
 import type { TaskRepository } from './ports/task-repository.ts';
 
 // Task use cases for a signed-in owner. Inputs are raw strings from any driving adapter; the
 // domain decides whether they are valid.
-export type TaskInput = Readonly<{ title: string; description: string }>;
+export type TaskInput = Readonly<{ title: string; description: string; dueDate: string }>;
+// A task as listed, with its derived state as of today.
+export type ListedTask = Task & Readonly<{ overdue: boolean }>;
 export type Invalid = Readonly<{ kind: 'invalid'; problems: TaskProblems }>;
 export type NotFound = Readonly<{ kind: 'notFound' }>;
 const notFound: NotFound = { kind: 'notFound' };
 
-export function taskService({ tasks }: Readonly<{ tasks: TaskRepository }>) {
+export function taskService(
+  { tasks, clock }: Readonly<{ tasks: TaskRepository; clock: Clock }>,
+) {
   return {
-    list: (ownerId: number) => tasks.listByOwner(ownerId),
+    // "Today" is read once, so every task in one list is judged against the same date.
+    async list(ownerId: number): Promise<ListedTask[]> {
+      const today = utcDateOf(clock.now());
+      return (await tasks.listByOwner(ownerId)).map((task) => ({
+        ...task,
+        overdue: isOverdue(task, today),
+      }));
+    },
     find: (ownerId: number, taskId: number) => tasks.findByOwner(ownerId, taskId),
 
     async add(ownerId: number, input: TaskInput): Promise<Result<void, Invalid>> {

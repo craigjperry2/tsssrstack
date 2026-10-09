@@ -6,11 +6,13 @@ import { fakePasswords, memoryTaskRepository, memoryUserRepository } from './fak
 
 export const origin = 'https://app.test';
 export const password = 'correct-horse-battery';
+// The web tests run on a fixed day: 2026-10-09 in UTC.
+export const fixedClock = { now: () => new Date('2026-10-09T12:00:00Z') };
 
 export function testApp(overrides: Partial<WebDeps> = {}) {
   return createWebApp({
     identity: identityService({ users: memoryUserRepository(), passwords: fakePasswords() }),
-    tasks: taskService({ tasks: memoryTaskRepository() }),
+    tasks: taskService({ tasks: memoryTaskRepository(), clock: fixedClock }),
     session: { secret: 'test-secret-that-is-at-least-32-bytes-long', secure: false },
     appOrigin: origin,
     ready: () => Promise.resolve(true),

@@ -1,4 +1,5 @@
 import type { TaskRepository } from '../../application/ports/task-repository.ts';
+import type { CalendarDate } from '../../domain/calendar.ts';
 import type { Task, TaskDescription, TaskTitle } from '../../domain/task.ts';
 import { type Db, queryPath } from './client.ts';
 
@@ -8,6 +9,7 @@ type TaskRow = {
   user_id: number;
   title: string;
   description: string | null;
+  due_date: string | null;
   is_completed: boolean;
 };
 
@@ -18,6 +20,7 @@ const toTask = (row: TaskRow): Task => ({
   ownerId: row.user_id,
   title: row.title as TaskTitle,
   description: row.description as TaskDescription | null,
+  dueDate: row.due_date as CalendarDate | null,
   completed: row.is_completed,
 });
 
@@ -29,11 +32,12 @@ export const taskRepository = (db: Db): TaskRepository => ({
     const [row] = await db.file<TaskRow[]>(queryPath('tasks/find'), [taskId, ownerId]);
     return row && toTask(row);
   },
-  add: async (ownerId, { title, description }) => {
-    await db.file(queryPath('tasks/create'), [ownerId, title, description]);
+  add: async (ownerId, { title, description, dueDate }) => {
+    await db.file(queryPath('tasks/create'), [ownerId, title, description, dueDate]);
   },
-  update: async (ownerId, taskId, { title, description }) =>
-    (await db.file(queryPath('tasks/edit'), [taskId, ownerId, title, description])).length > 0,
+  update: async (ownerId, taskId, { title, description, dueDate }) =>
+    (await db.file(queryPath('tasks/edit'), [taskId, ownerId, title, description, dueDate]))
+      .length > 0,
   toggleCompleted: async (ownerId, taskId) =>
     (await db.file(queryPath('tasks/toggle'), [taskId, ownerId])).length > 0,
   remove: async (ownerId, taskId) =>
