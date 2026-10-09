@@ -5,6 +5,7 @@
     "postgres": "npm:postgres@3.4.9",
     "sqids": "npm:sqids@0.3.0"
   },
+  "exclude": [".claude/"],
   "compilerOptions": { "strict": true, "jsx": "react-jsx", "jsxImportSource": "hono/jsx" },
   "lint": { "exclude": ["src/app/static/vendor/"] },
   "tasks": {

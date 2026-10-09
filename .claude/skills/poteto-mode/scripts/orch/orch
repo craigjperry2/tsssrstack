@@ -1,0 +1,4 @@
+#!/bin/sh
+# Deno wrapper for the orchestrate store CLI. Set ORCH_STORE or pass --store.
+here=$(cd "$(dirname "$0")" && pwd)
+exec deno run --allow-all --no-lock --config "$here/../deno.json" "$here/orch.ts" "$@"

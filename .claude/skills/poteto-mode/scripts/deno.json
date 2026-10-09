@@ -1,0 +1,13 @@
+{
+  "imports": {
+    "commander": "npm:commander@14.0.0",
+    "@std/expect": "jsr:@std/expect@1",
+    "@std/testing": "jsr:@std/testing@1"
+  },
+  "compilerOptions": { "strict": true, "types": ["node"] },
+  "nodeModulesDir": "none",
+  "tasks": {
+    "test": "deno test --allow-all --no-lock orch watch-pr",
+    "check": "deno check --no-lock orch watch-pr check-plan.mjs"
+  }
+}
