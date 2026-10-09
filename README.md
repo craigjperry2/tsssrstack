@@ -19,8 +19,12 @@ Datastar applies complete `#app` morphs returned in finite SSE responses for tas
 
 1. Copy `.env.example` to `.env` and set a real development `SESSION_SECRET`.
 2. Load that environment in your shell, then run `nix develop`.
-3. Start PostgreSQL and Nginx with `docker compose up -d`.
-4. Run `deno task migrate`, then `deno task dev`.
+3. Start PostgreSQL and Nginx with `docker compose up -d`. On first start, the PostgreSQL container
+   runs `infra/postgres/dev-roles.sql`, which creates the development runtime login `app_web`. For a
+   database created some other way, run that file once with `psql`; it is idempotent.
+4. Run `deno task migrate`, then `deno task dev`. Migrations connect as the schema owner
+   (`MIGRATION_DATABASE_URL`); the app connects as `app_web` (`DATABASE_URL`), which can only do
+   what the `app_runtime` role is granted.
 5. Visit [http://localhost:8080](http://localhost:8080), rather than port 8000.
 
 When `ENV=development`, the server seeds a convenience account on startup, `dev@example.com` /
@@ -29,8 +33,8 @@ environments and never overwrites an existing account's password.
 
 The Nix shell supplies Deno, Docker tooling, and PostgreSQL client utilities on NixOS and
 nix-darwin. `deno task check`, `deno fmt --check`, `deno lint`, and `deno task test` are the normal
-verification commands. Set `DATABASE_URL` to a migrated database to include the repository contract
-tests; without it they are reported as ignored.
+verification commands. Set `DATABASE_URL` to the runtime login on a migrated database to include the
+repository and schema tests; without it they are reported as ignored.
 
 ## Architecture
 
@@ -49,3 +53,9 @@ endpoint, broadcaster, SPA, ORM, Node runtime, or CDN asset dependency.
 Passwords are Argon2id PHC strings using Deno Web Crypto. Session cookies are signed, HTTP-only,
 SameSite Lax, and fixed to twelve hours; changing a password increments the persisted session
 version and invalidates older cookies.
+
+PostgreSQL guards the invariants the TypeScript domain explains: column domains refuse invalid
+emails, titles, descriptions, dates and non-Argon2id hashes; triggers maintain `updated_at` and bump
+the session version on every password change; and column-level grants make owners, ids and history
+immutable for the app. In production, create your own login role and `GRANT app_runtime TO` it. See
+[ADR 0004](docs/adr/0004-postgresql-guards-the-invariants.md).
