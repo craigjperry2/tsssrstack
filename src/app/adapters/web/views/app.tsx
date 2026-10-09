@@ -15,10 +15,10 @@ type Errors = Record<string, string>;
 const ErrorSummary: FC<{ errors: Errors }> = ({ errors }) =>
   Object.keys(errors).length > 0
     ? (
-      <aside aria-live='polite'>
+      <div class='notification is-danger is-light content' aria-live='polite'>
         <strong>Please correct the following:</strong>
         <ul>{Object.values(errors).map((error, index) => <li key={index}>{error}</li>)}</ul>
-      </aside>
+      </div>
     )
     : null;
 
@@ -26,25 +26,33 @@ const TaskFields: FC<{ prefix: string; values: Values; errors: Errors; bind?: bo
   { prefix, values, errors, bind },
 ) => (
   <>
-    <label htmlFor={`${prefix}-title`}>
-      Title<input
-        id={`${prefix}-title`}
-        name='title'
-        data-bind={bind ? 'title' : undefined}
-        value={values.title ?? ''}
-        aria-invalid={errors.title ? true : undefined}
-      />
-    </label>
-    <label htmlFor={`${prefix}-description`}>
-      Description<textarea
-        id={`${prefix}-description`}
-        name='description'
-        data-bind={bind ? 'description' : undefined}
-        aria-invalid={errors.description ? true : undefined}
-      >
-        {values.description ?? ''}
-      </textarea>
-    </label>
+    <div class='field'>
+      <label class='label' htmlFor={`${prefix}-title`}>Title</label>
+      <div class='control'>
+        <input
+          class={errors.title ? 'input is-danger' : 'input'}
+          id={`${prefix}-title`}
+          name='title'
+          data-bind={bind ? 'title' : undefined}
+          value={values.title ?? ''}
+          aria-invalid={errors.title ? true : undefined}
+        />
+      </div>
+    </div>
+    <div class='field'>
+      <label class='label' htmlFor={`${prefix}-description`}>Description</label>
+      <div class='control'>
+        <textarea
+          class={errors.description ? 'textarea is-danger' : 'textarea'}
+          id={`${prefix}-description`}
+          name='description'
+          data-bind={bind ? 'description' : undefined}
+          aria-invalid={errors.description ? true : undefined}
+        >
+          {values.description ?? ''}
+        </textarea>
+      </div>
+    </div>
   </>
 );
 
@@ -52,7 +60,7 @@ const TaskRow: FC<{ task: Task }> = ({ task }) => {
   const url = `/tasks/${id(task.id)}`;
   return (
     <tr id={`task-${id(task.id)}`}>
-      <td>
+      <td class='is-narrow is-vcentered'>
         <form data-on:submit__prevent={postExpr(`${url}/toggle`)}>
           <input
             type='checkbox'
@@ -62,27 +70,35 @@ const TaskRow: FC<{ task: Task }> = ({ task }) => {
           />
         </form>
       </td>
-      <td>
+      <td class='is-vcentered'>
         {task.is_completed ? <s>{task.title}</s> : <strong>{task.title}</strong>}
         {task.description && (
           <>
             <br />
-            <small>{task.description}</small>
+            <small class='has-text-grey'>{task.description}</small>
           </>
         )}
       </td>
-      <td class='task-actions'>
-        <button
-          type='button'
-          class='secondary outline btn-sm'
-          aria-label={`Edit ${task.title}`}
-          aria-controls={editorId(task.id)}
-          data-on:click={getExpr(`${url}/edit`)}
+      <td class='is-narrow is-vcentered'>
+        {/* One form holds both buttons so Bulma's .buttons group lays them out on one line. */}
+        <form
+          class='buttons are-small is-flex-wrap-nowrap'
+          data-on:submit__prevent={postExpr(`${url}/delete`)}
         >
-          Edit
-        </button>
-        <form data-on:submit__prevent={postExpr(`${url}/delete`)}>
-          <button type='submit' class='contrast outline btn-sm' aria-label={`Delete ${task.title}`}>
+          <button
+            type='button'
+            class='button'
+            aria-label={`Edit ${task.title}`}
+            aria-controls={editorId(task.id)}
+            data-on:click={getExpr(`${url}/edit`)}
+          >
+            Edit
+          </button>
+          <button
+            type='submit'
+            class='button is-danger is-outlined'
+            aria-label={`Delete ${task.title}`}
+          >
             Delete
           </button>
         </form>
@@ -116,9 +132,9 @@ export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = 
             values={values ?? { title: task.title, description: task.description ?? '' }}
             errors={errors}
           />
-          <div role='group'>
-            <button type='submit'>Save</button>
-            <button type='button' class='secondary' data-on:click={getExpr(url)}>Cancel</button>
+          <div class='buttons'>
+            <button type='submit' class='button is-primary'>Save</button>
+            <button type='button' class='button' data-on:click={getExpr(url)}>Cancel</button>
           </div>
         </form>
       </td>
@@ -135,39 +151,33 @@ export const App: FC<
   }
 > = ({ email, items, values = {}, errors = {} }) => (
   <div id='app'>
-    <nav>
-      <ul>
-        <li>
-          <strong>Tasks</strong>
-        </li>
-      </ul>
-      <ul>
-        <li>{email}</li>
-        <li>
-          <a href='/profile'>Profile</a>
-        </li>
-        <li>
-          <form method='post' action='/logout'>
-            <button type='submit' class='secondary btn-sm'>Log out</button>
-          </form>
-        </li>
-      </ul>
+    <nav class='level'>
+      <div class='level-left'>
+        <strong class='level-item'>Tasks</strong>
+      </div>
+      <form class='level-right' method='post' action='/logout'>
+        <span class='level-item has-text-grey'>{email}</span>
+        <a class='level-item' href='/profile'>Profile</a>
+        <div class='level-item'>
+          <button type='submit' class='button is-small'>Log out</button>
+        </div>
+      </form>
     </nav>
-    <h1>Your tasks</h1>
-    <form data-on:submit__prevent={postExpr('/tasks')}>
+    <h1 class='title'>Your tasks</h1>
+    <form class='block' data-on:submit__prevent={postExpr('/tasks')}>
       <ErrorSummary errors={errors} />
       <TaskFields prefix='task' values={values} errors={errors} bind />
-      <button type='submit'>Add task</button>
+      <button type='submit' class='button is-primary'>Add task</button>
     </form>
     {items.length === 0
       ? <p>No tasks yet. Add one above.</p>
       : (
-        <table class='tasks' aria-label='Task list'>
+        <table class='table is-fullwidth is-hoverable' aria-label='Task list'>
           <thead>
             <tr>
-              <th scope='col' class='task-done'>Done</th>
+              <th scope='col'>Done</th>
               <th scope='col'>Task</th>
-              <th scope='col' class='task-actions'>Actions</th>
+              <th scope='col'>Actions</th>
             </tr>
           </thead>
           <tbody>

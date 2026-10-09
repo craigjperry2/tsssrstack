@@ -293,15 +293,27 @@ app.get('/profile', protectedRoute, (c) =>
     c,
     'Profile',
     <div id='app'>
-      <h1>Change password</h1>
+      <h1 class='title'>Change password</h1>
       <form method='post' action='/profile/password'>
-        <label>
-          Current password<input required type='password' name='currentPassword' />
-        </label>
-        <label>
-          New password<input required type='password' name='newPassword' />
-        </label>
-        <button type='submit'>Change password</button>
+        <div class='field'>
+          <label class='label' htmlFor='current-password'>Current password</label>
+          <div class='control'>
+            <input
+              class='input'
+              id='current-password'
+              required
+              type='password'
+              name='currentPassword'
+            />
+          </div>
+        </div>
+        <div class='field'>
+          <label class='label' htmlFor='new-password'>New password</label>
+          <div class='control'>
+            <input class='input' id='new-password' required type='password' name='newPassword' />
+          </div>
+        </div>
+        <button type='submit' class='button is-primary'>Change password</button>
       </form>
     </div>,
   ));

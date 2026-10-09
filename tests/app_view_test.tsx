@@ -13,7 +13,7 @@ const render = async (props: Partial<Parameters<typeof App>[0]> = {}) =>
 
 Deno.test('tasks render as a read-only table, not edit forms', async () => {
   const html = await render();
-  assert(html.includes('<table class="tasks" aria-label="Task list">'), 'expected a task table');
+  assert(/<table [^>]*aria-label="Task list">/.test(html), 'expected a task table');
   assert(count(html, /<tr id="task-/g) === 2, 'expected one row per task');
   // Only the add form has text inputs; rows show text plus toggle, Edit and Delete controls.
   assert(count(html, /name="title"/g) === 1, 'rows must not contain title inputs');
