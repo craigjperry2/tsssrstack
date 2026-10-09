@@ -66,6 +66,13 @@ dbTest('due dates round-trip as the same calendar day', async (db) => {
   await tasks.add(owner, details('Early', '', '0001-01-01'));
   const [early, leap] = await tasks.listByOwner(owner);
   assertEquals([leap.dueDate, early.dueDate], ['2028-02-29', '0001-01-01']);
+  assertEquals((await tasks.findByOwner(owner, leap.id))?.dueDate, '2028-02-29');
+  assertEquals(await tasks.update(owner, leap.id, details('Moved', '', '2030-12-31')), true);
+  assertEquals((await tasks.findByOwner(owner, leap.id))?.dueDate, '2030-12-31');
+  assertEquals(
+    (await tasks.listByOwner(owner)).map((task) => [task.title, task.dueDate]),
+    [['Early', '0001-01-01'], ['Moved', '2030-12-31']],
+  );
   assertEquals(await tasks.update(owner, leap.id, details('Undated')), true);
   assertEquals((await tasks.findByOwner(owner, leap.id))?.dueDate, null);
 });
