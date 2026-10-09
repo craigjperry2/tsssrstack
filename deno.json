@@ -2,7 +2,7 @@
   "imports": {
     "@opentelemetry/api": "npm:@opentelemetry/api@1.9.1",
     "bulma": "npm:bulma@1.0.4",
-    "hono": "jsr:@hono/hono@4.12.31",
+    "hono": "jsr:@hono/hono@4.13.12",
     "postgres": "npm:postgres@3.4.9",
     "sqids": "npm:sqids@0.3.0"
   },
