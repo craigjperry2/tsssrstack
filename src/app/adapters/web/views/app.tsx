@@ -74,7 +74,7 @@ const TaskRow: FC<{ task: Task }> = ({ task }) => {
       <td class='task-actions'>
         <button
           type='button'
-          class='secondary outline'
+          class='secondary outline btn-sm'
           aria-label={`Edit ${task.title}`}
           aria-controls={editorId(task.id)}
           data-on:click={getExpr(`${url}/edit`)}
@@ -82,7 +82,7 @@ const TaskRow: FC<{ task: Task }> = ({ task }) => {
           Edit
         </button>
         <form data-on:submit__prevent={postExpr(`${url}/delete`)}>
-          <button type='submit' class='contrast outline' aria-label={`Delete ${task.title}`}>
+          <button type='submit' class='contrast outline btn-sm' aria-label={`Delete ${task.title}`}>
             Delete
           </button>
         </form>
@@ -148,7 +148,7 @@ export const App: FC<
         </li>
         <li>
           <form method='post' action='/logout'>
-            <button type='submit' class='secondary'>Log out</button>
+            <button type='submit' class='secondary btn-sm'>Log out</button>
           </form>
         </li>
       </ul>

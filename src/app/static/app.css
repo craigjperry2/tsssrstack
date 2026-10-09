@@ -18,6 +18,9 @@
 .tasks .task-actions button {
   width: auto;
   margin: 0 0 0 0.25rem;
+}
+/* Application-owned compact button variant; Pico 2 has no size modifiers. */
+.btn-sm {
   padding: 0.2rem 0.6rem;
   font-size: 0.8rem;
 }

@@ -22,6 +22,10 @@ Datastar applies complete `#app` morphs returned in finite SSE responses for tas
 4. Run `deno task migrate`, then `deno task dev`.
 5. Visit [http://localhost:8080](http://localhost:8080), rather than port 8000.
 
+When `ENV=development`, the server seeds a convenience account on startup, `dev@example.com` /
+`devdevdevdev`, unless that email already exists. The seed never runs in test or production
+environments and never overwrites an existing account's password.
+
 The Nix shell supplies Deno, Docker tooling, and PostgreSQL client utilities on NixOS and
 nix-darwin. `deno task check`, `deno fmt --check`, `deno lint`, and `deno test` are the normal
 verification commands.

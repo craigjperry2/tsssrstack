@@ -10,6 +10,7 @@ import { normalizeEmail, taskInput, validatePassword, validEmail } from './domai
 import { hashPassword, verifyPassword } from './adapters/security/password.ts';
 import { createSql } from './adapters/persistence/client.ts';
 import { type Task, tasks, type User, users } from './adapters/persistence/repositories.ts';
+import { devUserEmail, devUserPassword, seedDevUser } from './adapters/persistence/seed.ts';
 import { Layout } from './adapters/web/views/layout.tsx';
 import { App, appSqids, ClosedEditor, TaskEditor } from './adapters/web/views/app.tsx';
 import { Auth } from './adapters/web/views/auth.tsx';
@@ -21,6 +22,14 @@ const config = loadConfig();
 const sql = createSql(config);
 const userRepo = users(sql);
 const taskRepo = tasks(sql);
+// Development convenience account, only seeded when the server runs in development;
+// test and production environments never touch this path.
+if (config.env === 'development') {
+  const seeded = await seedDevUser(sql);
+  if (seeded) {
+    console.log(`Seeded development user ${devUserEmail} / ${devUserPassword}`);
+  }
+}
 const app = new Hono<{ Variables: Variables }>();
 const cookieName = 'app_session';
 const sessionLifetime = 60 * 60 * 12;
