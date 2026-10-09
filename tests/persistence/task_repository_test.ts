@@ -1,6 +1,7 @@
-import { users } from '../../src/app/adapters/persistence/repositories.ts';
+import { userRepository } from '../../src/app/adapters/persistence/user-repository.ts';
 import { taskRepository } from '../../src/app/adapters/persistence/task-repository.ts';
 import type { Db } from '../../src/app/adapters/persistence/client.ts';
+import type { EmailAddress } from '../../src/app/domain/identity.ts';
 import { parseTaskDetails } from '../../src/app/domain/task.ts';
 import { assertEquals } from '../support/assert.ts';
 import { dbTest, uniqueEmail } from '../support/db.ts';
@@ -10,7 +11,8 @@ const details = (title: string, description = '') => {
   if (!parsed.ok) throw new Error('invalid test details');
   return parsed.value;
 };
-const newOwner = async (db: Db) => (await users(db).create(uniqueEmail('owner'), 'hash')).id;
+const newOwner = async (db: Db) =>
+  (await userRepository(db).create(uniqueEmail('owner') as EmailAddress, 'hash'))!.id;
 
 dbTest("task SQL never reads or changes another owner's task", async (db) => {
   const tasks = taskRepository(db);

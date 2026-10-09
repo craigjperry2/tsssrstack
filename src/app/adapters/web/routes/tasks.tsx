@@ -30,7 +30,7 @@ export function taskRoutes(app: Hono<WebEnv>, { tasks }: WebDeps) {
     const user = currentUser(c);
     return patchElements(
       <App
-        email={user.email_normalized}
+        email={user.email}
         items={await tasks.list(user.id)}
         values={values}
         errors={errors}
@@ -47,7 +47,7 @@ export function taskRoutes(app: Hono<WebEnv>, { tasks }: WebDeps) {
     return page(
       c,
       'Tasks',
-      <App email={user.email_normalized} items={await tasks.list(user.id)} />,
+      <App email={user.email} items={await tasks.list(user.id)} />,
     );
   });
   app.post('/tasks', requireUser, async (c) => {

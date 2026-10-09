@@ -1,33 +1,27 @@
 import type { Hono } from 'hono';
-import { normalizeEmail, validatePassword, validEmail } from '../../../domain/validation.ts';
 import { form, page, requireUser, type WebDeps, type WebEnv } from '../context.tsx';
+import { loginMessage, registrationMessage } from '../messages.ts';
 import { clearSession, issueSession } from '../session.ts';
 import { Auth } from '../views/auth.tsx';
 
-// Verified against when the email is unknown, so failed logins take the same time either way.
-const dummyHash =
-  '$argon2id$v=19$m=65536,t=3,p=1$MDEyMzQ1Njc4OWFiY2RlZg$6VcbVD4_7DRhmJYF2BLo1MoROci40oH3Yx4kqPFSRo0';
-
-export function authRoutes(app: Hono<WebEnv>, { users, passwords, session }: WebDeps) {
+export function authRoutes(app: Hono<WebEnv>, { identity, session }: WebDeps) {
   app.get(
     '/register',
     (c) => c.get('user') ? c.redirect('/tasks') : page(c, 'Register', <Auth mode='register' />),
   );
   app.post('/register', async (c) => {
     const data = await form(c);
-    const email = normalizeEmail(data.email ?? '');
-    const password = data.password ?? '';
-    const invalid = !validEmail(email)
-      ? 'Enter a valid email address.'
-      : validatePassword(password, email);
-    if (invalid) return page(c, 'Register', <Auth mode='register' error={invalid} />);
-    try {
-      const user = await users.create(email, await passwords.hash(password));
-      await issueSession(c, session, { userId: user.id, sessionVersion: user.session_version });
-      return c.redirect('/tasks', 303);
-    } catch {
-      return page(c, 'Register', <Auth mode='register' error='Unable to create that account.' />);
+    const registered = await identity.register(data.email ?? '', data.password ?? '');
+    if (!registered.ok) {
+      return page(
+        c,
+        'Register',
+        <Auth mode='register' error={registrationMessage(registered.error)} />,
+      );
     }
+    const { id, sessionVersion } = registered.value;
+    await issueSession(c, session, { userId: id, sessionVersion });
+    return c.redirect('/tasks', 303);
   });
   app.get(
     '/login',
@@ -35,12 +29,10 @@ export function authRoutes(app: Hono<WebEnv>, { users, passwords, session }: Web
   );
   app.post('/login', async (c) => {
     const data = await form(c);
-    const user = await users.byEmail(normalizeEmail(data.email ?? ''));
-    const ok = await passwords.verify(data.password ?? '', user?.password_hash ?? dummyHash);
-    if (!user || !ok) {
-      return page(c, 'Login', <Auth mode='login' error='Invalid email or password.' />);
-    }
-    await issueSession(c, session, { userId: user.id, sessionVersion: user.session_version });
+    const loggedIn = await identity.logIn(data.email ?? '', data.password ?? '');
+    if (!loggedIn.ok) return page(c, 'Login', <Auth mode='login' error={loginMessage} />);
+    const { id, sessionVersion } = loggedIn.value;
+    await issueSession(c, session, { userId: id, sessionVersion });
     return c.redirect('/tasks', 303);
   });
   app.post('/logout', requireUser, (c) => {

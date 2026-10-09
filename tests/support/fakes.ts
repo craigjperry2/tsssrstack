@@ -1,34 +1,28 @@
-import type { User } from '../../src/app/adapters/persistence/repositories.ts';
+import type { PasswordHasher } from '../../src/app/application/ports/password-hasher.ts';
 import type { TaskRepository } from '../../src/app/application/ports/task-repository.ts';
+import type { UserRepository } from '../../src/app/application/ports/user-repository.ts';
+import type { Account } from '../../src/app/domain/identity.ts';
 import type { Task } from '../../src/app/domain/task.ts';
-import type { WebDeps } from '../../src/app/adapters/web/context.tsx';
 
-// In-memory stand-ins for the persistence adapter, enforcing the same uniqueness rule as the SQL.
-export function memoryUsers(): WebDeps['users'] {
-  const rows: User[] = [];
+// Implements the UserRepository contract in memory, including email uniqueness.
+export function memoryUserRepository(): UserRepository {
+  const accounts: Account[] = [];
   return {
-    byEmail: (email: string) =>
-      Promise.resolve(rows.find((user) => user.email_normalized === email)),
-    byId: (id: number) => Promise.resolve(rows.find((user) => user.id === id)),
-    create: (email: string, hash: string) => {
-      if (rows.some((user) => user.email_normalized === email)) {
-        return Promise.reject(new Error('duplicate key'));
-      }
-      const user = {
-        id: rows.length + 1,
-        email_normalized: email,
-        password_hash: hash,
-        session_version: 0,
-      };
-      rows.push(user);
-      return Promise.resolve(user);
+    findByEmail: (email) => Promise.resolve(accounts.find((account) => account.email === email)),
+    findById: (id) => Promise.resolve(accounts.find((account) => account.id === id)),
+    create: (email, passwordHash) => {
+      if (accounts.some((account) => account.email === email)) return Promise.resolve(undefined);
+      const account = { id: accounts.length + 1, email, passwordHash, sessionVersion: 0 };
+      accounts.push(account);
+      return Promise.resolve(account);
     },
-    changePassword: (id: number, hash: string) => {
-      const user = rows.find((row) => row.id === id)!;
-      Object.assign(user, { password_hash: hash, session_version: user.session_version + 1 });
-      return Promise.resolve({ ...user });
+    replacePassword: (id, passwordHash) => {
+      const index = accounts.findIndex((account) => account.id === id);
+      const current = accounts[index];
+      accounts[index] = { ...current, passwordHash, sessionVersion: current.sessionVersion + 1 };
+      return Promise.resolve(accounts[index]);
     },
-  } as unknown as WebDeps['users'];
+  };
 }
 
 // Implements the TaskRepository contract in memory, including owner scoping.
@@ -61,7 +55,15 @@ export function memoryTaskRepository(): TaskRepository {
   };
 }
 
-export const fakePasswords = {
-  hash: (password: string) => Promise.resolve(`plain:${password}`),
-  verify: (password: string, hash: string) => Promise.resolve(hash === `plain:${password}`),
-};
+// Fast and transparent instead of Argon2id; records what verify was asked to check.
+export function fakePasswords(): PasswordHasher & { verified: (string | undefined)[] } {
+  const verified: (string | undefined)[] = [];
+  return {
+    verified,
+    hash: (password) => Promise.resolve(`hashed:${password}`),
+    verify: (password, hash) => {
+      verified.push(hash);
+      return Promise.resolve(hash === `hashed:${password}`);
+    },
+  };
+}
