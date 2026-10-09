@@ -31,9 +31,9 @@ Datastar        │   routes · middleware · session · views       │
                 │ ┌─ application ────────────────────────────┐  │
                 │ │ taskService · identityService            │  │
                 │ │ ports/  TaskRepository  UserRepository   │  │
-                │ │         PasswordHasher                   │  │
+                │ │         PasswordHasher  Clock            │  │
                 │ │ ┌─ domain ─────────────────────────────┐ │  │
-                │ │ │ Task · TaskTitle · EmailAddress …    │ │  │
+                │ │ │ Task · TaskTitle · isOverdue · …     │ │  │
                 │ │ └──────────────────────────────────────┘ │  │
                 │ └──────────────────────▲───────────────────┘  │
                 │                        │ implements           │
@@ -51,12 +51,13 @@ implements them. Nothing in the core knows that Hono or PostgreSQL exist.
 
 ```text
 src/app/
-  main.tsx                  composition root: config, adapters, services, Deno.serve
+  main.tsx                  composition root: config, adapters, system clock, services, Deno.serve
   config.ts                 environment parsing and validation
 
   domain/                   entities, value objects and rules; pure TypeScript
     shared.ts               Brand, Result, codePoints
-    task.ts                 Task, TaskTitle, TaskDescription, parseTaskDetails
+    calendar.ts             CalendarDate, utcDateOf
+    task.ts                 Task, TaskTitle, TaskDescription, due dates, isOverdue
     identity.ts             EmailAddress, password policy, Account, Principal
 
   application/              use cases, written against ports
@@ -66,6 +67,7 @@ src/app/
       task-repository.ts
       user-repository.ts
       password-hasher.ts
+      clock.ts
 
   adapters/
     web/                    driving adapter: HTTP, HTML, SSE
@@ -119,10 +121,13 @@ violation. CI runs both.
 
 The domain uses a few tactical DDD patterns, and only where they pay their way:
 
-- **Value objects** are branded types with checked constructors: `TaskTitle`, `TaskDescription` and
-  `EmailAddress`. A plain `string` cannot be passed where a `TaskTitle` is required, so the only way
-  to get one is through a parser that enforces the rule.
+- **Value objects** are branded types with checked constructors: `TaskTitle`, `TaskDescription`,
+  `CalendarDate` and `EmailAddress`. A plain `string` cannot be passed where a `TaskTitle` is
+  required, so the only way to get one is through a parser that enforces the rule.
 - **Entities**: `Task` and `Account` have identity and a lifecycle. A task's owner never changes.
+- **Rules are pure functions over domain values.** `isOverdue(task, today)` is the clearest example.
+  The domain cannot read the clock, so the application passes today in. That keeps the rule
+  trivially testable on either side of midnight.
 - **Expected failures are values.** Parsers and use cases return `Result` with problem codes such as
   `required`, `tooLong`, `emailInUse` and `notFound`. Problem codes are not messages: the web
   adapter decides the wording in `messages.ts`.
@@ -137,7 +142,10 @@ the owner's id.
 | --------------- | ------------------------------------------------------------------------------------------ |
 | Task            | Something an owner wants to do, with a title, an optional description and a completed flag |
 | Owner           | The account a task belongs to. Every task operation is scoped to one owner                 |
-| Task details    | The user-editable part of a task, validated together                                       |
+| Task details    | The user-editable part of a task (title, description, due date), validated together        |
+| Due date        | An optional calendar day, with no time or zone, by which the task should be done           |
+| Today           | The current calendar date in UTC, read from the `Clock` port                               |
+| Overdue         | Not completed, and the due date is before today. Derived on read, never stored             |
 | Account         | Credentials for one normalised email address                                               |
 | Principal       | The signed-in user as the rest of the app sees them: id, email, session version            |
 | Session version | A counter on the account. A password change increments it, revoking older cookies          |
@@ -149,6 +157,7 @@ the owner's id.
 | `TaskRepository` | `adapters/persistence/task-repository` | Storage. The contract includes owner scoping and atomic changes |
 | `UserRepository` | `adapters/persistence/user-repository` | Storage. The contract includes the atomic session-version bump  |
 | `PasswordHasher` | `adapters/security/password`           | Argon2id is slow by design; use cases are tested with a fake    |
+| `Clock`          | `systemClock` in `main.tsx`            | Overdue depends on today; tests fix the date                    |
 
 These are deliberately not ports: sessions and cookies (web concerns), Sqids (URL formatting),
 rendering, and readiness probes. The use cases themselves are plain functions, so they need no
@@ -165,8 +174,9 @@ web        routes/tasks: form fields → TaskInput (raw strings)
 app        taskService.add(ownerId, input)
 domain       parseTaskDetails → Result<TaskDetails, TaskProblems>
 app          invalid → return the problems; valid → TaskRepository.add(ownerId, details)
-persist    sql/tasks/create.sql with $1, $2, $3
-web        re-query the task list, render <App> with JSX, send one finite SSE response:
+persist    sql/tasks/create.sql with $1 … $4
+app        taskService.list reads the Clock once and derives overdue for each task
+web        render <App> with JSX from the re-queried list, send one finite SSE response:
              datastar-patch-elements (all of #app) + datastar-patch-signals (clear the form)
 browser    Datastar morphs #app to match
 ```
@@ -216,7 +226,8 @@ reported as ignored otherwise. Run everything with `deno task test`.
 
 ## Adding a feature
 
-Work from the inside out:
+Due dates were added this way, in a single commit. They make a compact worked example. Work from the
+inside out:
 
 1. **Domain.** Add value objects and rules to the owning module, with tests that need nothing.
 2. **Application.** Extend a service, or add a port if the feature needs something new from outside
@@ -235,6 +246,7 @@ Architecture decision records live in [`docs/adr/`](docs/adr):
 
 - [0001: Ports and adapters with a small domain core](docs/adr/0001-ports-and-adapters.md)
 - [0002: Server-rendered hypermedia with Datastar](docs/adr/0002-server-rendered-hypermedia-with-datastar.md)
+- [0003: Due dates are calendar days, judged against today in UTC](docs/adr/0003-due-dates-use-utc-calendar-days.md)
 
 [`docs/plans/bootstrap_plan.md`](docs/plans/bootstrap_plan.md) is the plan the repository was
 bootstrapped from. It is kept for history; where it differs from this document, this document wins.

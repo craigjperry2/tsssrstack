@@ -2,6 +2,7 @@
 // server. Nothing imports this module.
 import { loadConfig } from './config.ts';
 import { identityService } from './application/identity.ts';
+import type { Clock } from './application/ports/clock.ts';
 import { taskService } from './application/tasks.ts';
 import { argon2PasswordHasher } from './adapters/security/password.ts';
 import { createSql } from './adapters/persistence/client.ts';
@@ -12,7 +13,8 @@ import { createWebApp } from './adapters/web/app.tsx';
 const config = loadConfig();
 const sql = createSql(config.databaseUrl);
 const identity = identityService({ users: userRepository(sql), passwords: argon2PasswordHasher });
-const tasks = taskService({ tasks: taskRepository(sql) });
+const systemClock: Clock = { now: () => new Date() };
+const tasks = taskService({ tasks: taskRepository(sql), clock: systemClock });
 
 // Development convenience account, registered through the normal use case and only when the
 // server runs in development. An existing account, and its password, is left alone.

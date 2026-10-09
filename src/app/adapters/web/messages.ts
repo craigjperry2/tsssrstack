@@ -10,12 +10,14 @@ const taskMessages = {
     tooLong: 'Title must be at most 200 characters.',
   },
   description: { tooLong: 'Description must be at most 5,000 characters.' },
+  dueDate: { invalid: 'Enter a real date for the due date.' },
 } as const;
 
 export function taskErrors(problems: TaskProblems): Record<string, string> {
   const errors: Record<string, string> = {};
   if (problems.title) errors.title = taskMessages.title[problems.title];
   if (problems.description) errors.description = taskMessages.description[problems.description];
+  if (problems.dueDate) errors.dueDate = taskMessages.dueDate[problems.dueDate];
   return errors;
 }
 

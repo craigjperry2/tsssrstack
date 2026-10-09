@@ -1,8 +1,9 @@
 import { type FC, Fragment } from 'hono/jsx';
+import type { ListedTask } from '../../../application/tasks.ts';
 import type { Task } from '../../../domain/task.ts';
 import { getExpr, postExpr } from '../datastar.ts';
 import { encodePublicId as id } from '../public-id.ts';
-type Values = { title?: string; description?: string };
+type Values = { title?: string; description?: string; dueDate?: string };
 type Errors = Record<string, string>;
 
 const ErrorSummary: FC<{ errors: Errors }> = ({ errors }) =>
@@ -46,10 +47,28 @@ const TaskFields: FC<{ prefix: string; values: Values; errors: Errors; bind?: bo
         </textarea>
       </div>
     </div>
+    <div class='field'>
+      <label class='label' htmlFor={`${prefix}-due-date`}>Due date</label>
+      <div class='control'>
+        <input
+          class={errors.dueDate ? 'input is-danger' : 'input'}
+          type='date'
+          id={`${prefix}-due-date`}
+          name='dueDate'
+          data-bind={bind ? 'dueDate' : undefined}
+          value={values.dueDate ?? ''}
+          aria-invalid={errors.dueDate ? true : undefined}
+          aria-describedby={`${prefix}-due-date-help`}
+        />
+      </div>
+      <p class='help' id={`${prefix}-due-date-help`}>
+        Optional. The task is overdue from the following day, by UTC date.
+      </p>
+    </div>
   </>
 );
 
-const TaskRow: FC<{ task: Task }> = ({ task }) => {
+const TaskRow: FC<{ task: ListedTask }> = ({ task }) => {
   const url = `/tasks/${id(task.id)}`;
   return (
     <tr id={`task-${id(task.id)}`}>
@@ -65,6 +84,14 @@ const TaskRow: FC<{ task: Task }> = ({ task }) => {
       </td>
       <td class='is-vcentered'>
         {task.completed ? <s>{task.title}</s> : <strong>{task.title}</strong>}
+        {task.dueDate && (
+          <>
+            {' '}
+            <span class={task.overdue ? 'tag is-danger is-light' : 'tag is-light'}>
+              {task.overdue ? `Overdue · due ${task.dueDate}` : `Due ${task.dueDate}`}
+            </span>
+          </>
+        )}
         {task.description && (
           <>
             <br />
@@ -122,7 +149,12 @@ export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = 
           <ErrorSummary errors={errors} />
           <TaskFields
             prefix={editorId(task.id)}
-            values={values ?? { title: task.title, description: task.description ?? '' }}
+            values={values ??
+              {
+                title: task.title,
+                description: task.description ?? '',
+                dueDate: task.dueDate ?? '',
+              }}
             errors={errors}
           />
           <div class='buttons'>
@@ -138,7 +170,7 @@ export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = 
 export const App: FC<
   {
     email: string;
-    items: Task[];
+    items: ListedTask[];
     values?: Values;
     errors?: Errors;
   }

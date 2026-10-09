@@ -1,4 +1,5 @@
-import { createSql, type Db } from '../../src/app/adapters/persistence/client.ts';
+import type { TransactionSql } from 'postgres';
+import { createSql } from '../../src/app/adapters/persistence/client.ts';
 
 // Repository contract tests run against a real, migrated PostgreSQL when DATABASE_URL is
 // available (CI provides one) and are reported as ignored otherwise.
@@ -9,7 +10,7 @@ const databaseUrl = granted ? Deno.env.get('DATABASE_URL') : undefined;
 class Rollback extends Error {}
 
 // Runs fn in a transaction that is always rolled back, so tests leave no rows behind.
-export function dbTest(name: string, fn: (db: Db) => Promise<void>) {
+export function dbTest(name: string, fn: (db: TransactionSql) => Promise<void>) {
   Deno.test({
     name,
     ignore: !databaseUrl,

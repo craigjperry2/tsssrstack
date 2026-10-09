@@ -199,3 +199,24 @@ Deno.test('changing the password revokes every older session', async () => {
   });
   assertEquals(relogin.status, 303);
 });
+
+Deno.test('due dates are validated and overdue tasks are flagged as of today (UTC)', async () => {
+  const app = testApp(); // its clock reads 2026-10-09
+  const cookie = await signUp(app);
+  const rejected = await (await send(app, '/tasks', {
+    fields: { title: 'Pay rent', dueDate: '2026-02-30' },
+    cookie,
+  })).text();
+  assert(rejected.includes('Enter a real date for the due date.'), rejected);
+  assert(rejected.includes('value="2026-02-30"'), 'submitted date is kept');
+
+  for (const [title, dueDate] of [['Pay rent', '2026-10-08'], ['File taxes', '2026-10-09']]) {
+    await send(app, '/tasks', { fields: { title, dueDate }, cookie });
+  }
+  const page = await (await send(app, '/tasks', { cookie })).text();
+  assert(page.includes('Overdue · due 2026-10-08'), 'due yesterday is overdue');
+  assert(page.includes('Due 2026-10-09') && !page.includes('Overdue · due 2026-10-09'), page);
+
+  const added = await (await send(app, '/tasks', { fields: { title: 'Later' }, cookie })).text();
+  assert(added.includes('"dueDate":""'), 'the add form clears its due date signal');
+});

@@ -6,8 +6,8 @@ import { parseTaskDetails } from '../../src/app/domain/task.ts';
 import { assertEquals } from '../support/assert.ts';
 import { dbTest, uniqueEmail } from '../support/db.ts';
 
-const details = (title: string, description = '') => {
-  const parsed = parseTaskDetails({ title, description });
+const details = (title: string, description = '', dueDate = '') => {
+  const parsed = parseTaskDetails({ title, description, dueDate });
   if (!parsed.ok) throw new Error('invalid test details');
   return parsed.value;
 };
@@ -34,9 +34,9 @@ dbTest('tasks round-trip through SQL as domain values', async (db) => {
   await tasks.add(owner, details('First'));
   await tasks.add(owner, details('Second', 'Notes'));
   const listed = await tasks.listByOwner(owner);
-  assertEquals(listed.map((task) => [task.title, task.description, task.completed]), [
-    ['Second', 'Notes', false],
-    ['First', null, false],
+  assertEquals(listed.map((task) => [task.title, task.description, task.dueDate, task.completed]), [
+    ['Second', 'Notes', null, false],
+    ['First', null, null, false],
   ]);
   const first = listed[1];
   assertEquals(first.ownerId, owner);
@@ -55,4 +55,17 @@ dbTest('tasks round-trip through SQL as domain values', async (db) => {
   assertEquals(await tasks.remove(owner, first.id), true);
   assertEquals(await tasks.findByOwner(owner, first.id), undefined);
   assertEquals(await tasks.remove(owner, first.id), false);
+});
+
+dbTest('due dates round-trip as the same calendar day', async (db) => {
+  const tasks = taskRepository(db);
+  const owner = await newOwner(db);
+  // Under a session zone far from UTC, any timestamp conversion on the way would shift the day.
+  await db`SET LOCAL TIME ZONE 'Pacific/Kiritimati'`;
+  await tasks.add(owner, details('Leap day', '', '2028-02-29'));
+  await tasks.add(owner, details('Early', '', '0001-01-01'));
+  const [early, leap] = await tasks.listByOwner(owner);
+  assertEquals([leap.dueDate, early.dueDate], ['2028-02-29', '0001-01-01']);
+  assertEquals(await tasks.update(owner, leap.id, details('Undated')), true);
+  assertEquals((await tasks.findByOwner(owner, leap.id))?.dueDate, null);
 });
