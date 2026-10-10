@@ -42,6 +42,37 @@ the TypeScript to `dist/`, which Node runs under its permission model. Set `DATA
 runtime login on a migrated database to include the repository and schema tests; without it they
 are reported as skipped.
 
+## Deploy to NixOS
+
+The flake exports the app as `packages.<system>.tsssrstack` and a NixOS module,
+`nixosModules.default`, which runs migrations as the schema owner, the app as `app_web`, and Nginx
+with a Let's Encrypt certificate in front ([ADR 0007](docs/adr/0007-deploy-to-nixos-with-a-flake-module.md)).
+Add this flake as an input to the host's flake, then:
+
+```nix
+{
+  imports = [ inputs.tsssrstack.nixosModules.default ];
+  services.tsssrstack = {
+    enable = true;
+    domain = "tsssrstack.example.com";
+    httpsPort = 8443; # forward public port 443 here
+    openFirewall = true;
+  };
+  security.acme = {
+    acceptTerms = true;
+    defaults.email = "you@example.com";
+    # DNS-01: any lego DNS provider. The credentials file lives on the host, outside the store.
+    certs."tsssrstack.example.com" = {
+      dnsProvider = "spaceship";
+      environmentFile = "/var/lib/secrets/acme-dns.env";
+    };
+  };
+}
+```
+
+Deploy with `nix flake update tsssrstack` and `nixos-rebuild switch` in the host's flake.
+`nix build .#checks.x86_64-linux.nixos-module` boots the module in VMs and checks it end to end.
+
 ## Architecture
 
 The code follows ports and adapters around a small domain core: `domain/` and `application/` are
@@ -63,5 +94,6 @@ version and invalidates older cookies.
 PostgreSQL guards the invariants the TypeScript domain explains: column domains refuse invalid
 emails, titles, descriptions, dates and non-Argon2id hashes; triggers maintain `updated_at` and bump
 the session version on every password change; and column-level grants make owners, ids and history
-immutable for the app. In production, create your own login role and `GRANT app_runtime TO` it. See
-[ADR 0004](docs/adr/0004-postgresql-guards-the-invariants.md).
+immutable for the app. In production, the NixOS module creates the login role `app_web` with peer
+authentication and no password; elsewhere, create your own login role and `GRANT app_runtime TO`
+it. See [ADR 0004](docs/adr/0004-postgresql-guards-the-invariants.md).
