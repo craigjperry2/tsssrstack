@@ -41,7 +41,10 @@ test('unexpected errors become a generic 500 without leaking details', async () 
   } finally {
     console.error = original;
   }
-  assert(logged.some((line) => line.includes('secret detail')), 'details are logged');
+  assert(
+    logged.some((line) => line.includes('secret detail')),
+    'details are logged',
+  );
 });
 
 test('signed-out visitors are sent to the login page', async () => {
@@ -95,7 +98,10 @@ test('a database failure during registration is a generic 500, not a taken email
   } finally {
     console.error = original;
   }
-  assert(logged.some((line) => line.includes('connection reset')), 'details are logged');
+  assert(
+    logged.some((line) => line.includes('connection reset')),
+    'details are logged',
+  );
 });
 
 test('login failures do not reveal whether the email exists', async () => {
@@ -117,7 +123,7 @@ test('login failures do not reveal whether the email exists', async () => {
 test('a tampered session cookie is ignored', async () => {
   const app = testApp();
   const cookie = await signUp(app);
-  const tampered = cookie.replace(/.$/, (last) => last === 'A' ? 'B' : 'A');
+  const tampered = cookie.replace(/.$/, (last) => (last === 'A' ? 'B' : 'A'));
   assertEquals((await send(app, '/tasks', { cookie: tampered })).status, 302);
 });
 
@@ -164,17 +170,21 @@ test('editing replaces only the editor row until the save succeeds', async () =>
   assert(opened.includes(`data: mode replace\ndata: elements <tr id="edit-${id}"`), opened);
   assert(opened.includes('value="Draft"'), 'editor prefilled');
 
-  const rejected = await (await send(app, `/tasks/${id}/edit`, {
-    fields: { title: '' },
-    cookie,
-  })).text();
+  const rejected = await (
+    await send(app, `/tasks/${id}/edit`, {
+      fields: { title: '' },
+      cookie,
+    })
+  ).text();
   assertEquals(sseEvents(rejected), ['datastar-patch-elements']);
   assert(rejected.includes('mode replace') && rejected.includes('Title is required.'), rejected);
 
-  const saved = await (await send(app, `/tasks/${id}/edit`, {
-    fields: { title: 'Final', description: 'Done' },
-    cookie,
-  })).text();
+  const saved = await (
+    await send(app, `/tasks/${id}/edit`, {
+      fields: { title: 'Final', description: 'Done' },
+      cookie,
+    })
+  ).text();
   assertEquals(sseEvents(saved), ['datastar-patch-elements', 'datastar-patch-elements']);
   const [morph, close] = saved.split('\n\n');
   assert(morph.includes('<div id="app">') && morph.includes('<strong>Final</strong>'), morph);
@@ -228,14 +238,19 @@ test('changing the password revokes every older session', async () => {
 test('due dates are validated and overdue tasks are flagged as of today (UTC)', async () => {
   const app = testApp(); // its clock reads 2026-10-09
   const cookie = await signUp(app);
-  const rejected = await (await send(app, '/tasks', {
-    fields: { title: 'Pay rent', dueDate: '2026-02-30' },
-    cookie,
-  })).text();
+  const rejected = await (
+    await send(app, '/tasks', {
+      fields: { title: 'Pay rent', dueDate: '2026-02-30' },
+      cookie,
+    })
+  ).text();
   assert(rejected.includes('Enter a real date for the due date.'), rejected);
   assert(rejected.includes('value="2026-02-30"'), 'submitted date is kept');
 
-  for (const [title, dueDate] of [['Pay rent', '2026-10-08'], ['File taxes', '2026-10-09']]) {
+  for (const [title, dueDate] of [
+    ['Pay rent', '2026-10-08'],
+    ['File taxes', '2026-10-09'],
+  ]) {
     await send(app, '/tasks', { fields: { title, dueDate }, cookie });
   }
   const page = await (await send(app, '/tasks', { cookie })).text();

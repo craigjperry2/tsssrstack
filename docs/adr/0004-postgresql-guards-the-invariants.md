@@ -59,6 +59,7 @@ practical. Migration `003_guard_invariants.sql` implements this:
   So ids, owners, `created_at`, emails and session versions are immutable for the application, it
   cannot delete accounts, and it cannot change the schema. Every new table states its runtime grants
   in its migration; there are no default privileges.
+
 - **COMMENT ON** documents the meaning and rule of each domain, table and non-obvious column, so
   `\d+` explains the schema.
 - **Indexes follow access paths.** The task list (`user_id = $1 ORDER BY created_at DESC, id DESC`)

@@ -25,7 +25,11 @@ type App = ReturnType<typeof testApp>;
 export function send(
   app: App,
   path: string,
-  { fields, cookie, headers = {} }: {
+  {
+    fields,
+    cookie,
+    headers = {},
+  }: {
     fields?: Record<string, string>;
     cookie?: string;
     headers?: Record<string, string>;

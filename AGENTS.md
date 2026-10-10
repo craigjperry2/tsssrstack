@@ -6,7 +6,7 @@ Build a server-first web application with strong systemic protections.
 
 ## Stack
 
-- **Runtime:** Deno
+- **Runtime:** Node (current LTS, from the Nix dev shell)
 - **Language:** TypeScript, strict mode
 - **HTTP / routing / middleware:** Hono
 - **Server-side HTML:** Hono JSX
@@ -15,10 +15,12 @@ Build a server-first web application with strong systemic protections.
 - **Database:** PostgreSQL
 - **Database driver:** postgres.js
 - **SQL:** parameterised queries stored in `.sql` files
-- **Package management:** Deno
-- **Formatting / linting / testing:** built-in Deno tooling
+- **Package management:** pnpm
+- **Type checking / build:** `tsc`
+- **Formatting / linting:** oxfmt / oxlint
+- **Testing:** `node:test`
 
-Do not introduce Node, pnpm, Vite, React, Preact, an ORM, or a client-side SPA framework unless a concrete requirement justifies them.
+Do not introduce Vite, a bundler, React, Preact, an ORM, or a client-side SPA framework unless a concrete requirement justifies them. Deno is being retired (ADR 0005); do not reintroduce it.
 
 ---
 
@@ -63,32 +65,36 @@ Prefer re-rendering a meaningful region of the page over manually encoding many 
 
 ---
 
-## Deno
+## Node and pnpm
 
-Use Deno as the runtime and toolchain.
-
-Prefer:
+Node runs the application; pnpm manages dependencies. `tsc` type-checks and compiles the
+TypeScript and JSX to `dist/`, which Node runs. Use the `package.json` scripts:
 
 ```bash
-deno run
-deno task
-deno fmt
-deno lint
-deno test
-deno check
-deno add
+pnpm dev          # build, then rebuild and restart on change
+pnpm start
+pnpm migrate
+pnpm test
+pnpm check
+pnpm lint
+pnpm fmt
+pnpm add --save-exact <package>
 ```
 
-Do not add separate tooling for functionality already provided by Deno.
+Prefer Node built-ins (`node:test`, `node:fs`, Web Crypto, `fetch`) over packages, and do not add
+tooling that duplicates what these tools already do.
 
-Use restricted runtime permissions. Grant only required:
+Run Node with its permission model (`--permission`). Grant only what is required:
 
-- network destinations
-- environment variables
-- filesystem paths
-- subprocess access
+- filesystem read paths, one `--allow-fs-read` flag per path
+- network access (`--allow-net` is all or nothing)
+- no writes, subprocesses, workers or native addons unless a concrete requirement needs them
 
-Do not default to unrestricted permissions.
+Node cannot restrict environment variables, so only `src/app/config.ts` and the migration runner
+may use `process`; the architecture lint enforces this.
+
+Keep pnpm's supply-chain settings in `pnpm-workspace.yaml` (release age, trust policy, no
+dependency build scripts). Do not loosen them to get a dependency installed.
 
 ---
 
@@ -102,7 +108,7 @@ Use Hono for:
 - central security enforcement
 - server-side JSX rendering
 
-Do not build a custom HTTP framework on top of `Deno.serve()`.
+Do not build a custom HTTP framework on top of `node:http`; serve Hono with `@hono/node-server`.
 
 Keep handlers thin:
 
@@ -367,8 +373,8 @@ src/app/adapters/<name>/      web (Hono, JSX, Datastar), persistence (postgres.j
 
 Dependencies point inwards only: domain → domain; application → application, domain; an adapter
 → itself, application, domain and packages. Adapters never import each other. The domain and
-application layers use no JSX, `Deno.*`, `fetch`, `Date.now()`/`new Date()` or `Math.random()`;
-inject those through a port. `deno lint` enforces this with `tools/architecture_lint.ts`.
+application layers use no JSX, `process`, `fetch`, `Date.now()`/`new Date()` or `Math.random()`;
+inject those through a port. `pnpm lint` enforces this with `tools/architecture_lint.ts`.
 
 When adding a feature, work inwards-out: domain, application (and port), persistence, web,
 then wiring in `main.tsx`. Update ARCHITECTURE.md when the structure or vocabulary changes, and
@@ -378,7 +384,7 @@ PostgreSQL guards the invariants; the TypeScript domain explains them (ADR 0004)
 value type needs a matching database domain or constraint that accepts everything the TypeScript
 accepts (never stricter, so a valid value never becomes a 500). Each new table states its
 `app_runtime` grants in its migration. The app connects with `DATABASE_URL` as a member of
-`app_runtime`; only `deno task migrate` uses the owner's `MIGRATION_DATABASE_URL`.
+`app_runtime`; only `pnpm migrate` uses the owner's `MIGRATION_DATABASE_URL`.
 
 ---
 
@@ -387,7 +393,7 @@ accepts (never stricter, so a valid value never becomes a 500). Each new table s
 Expected application dependencies:
 
 ```text
-Hono
+Hono (served by @hono/node-server)
 Datastar
 postgres.js
 ```
@@ -411,7 +417,7 @@ Avoid dependencies added only for convenience around trivial code.
 
 - no direct pushes, force pushes, or branch deletion
 - every change lands through a pull request
-- the CI checks `deno (ubuntu-latest)` and `deno (macos-latest)` must pass before merging
+- the CI checks `node (ubuntu-latest)` and `node (macos-latest)` must pass before merging
 
 Work on a branch, push it, and open a pull request against `main`. Never push to `main` directly
 or try to bypass the ruleset.
@@ -419,11 +425,12 @@ or try to bypass the ruleset.
 Before pushing, run the same checks CI runs (`.github/workflows/ci.yml`):
 
 ```bash
-deno fmt --check
-deno lint
-deno check src/app/main.tsx
-deno task test   # set DATABASE_URL to a migrated database to include the repository tests
-deno audit
+pnpm install --frozen-lockfile
+pnpm fmt:check
+pnpm lint
+pnpm check
+pnpm test   # set DATABASE_URL to a migrated database to include the repository tests
+pnpm audit
 (cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS)
 ```
 

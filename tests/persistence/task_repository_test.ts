@@ -37,10 +37,13 @@ dbTest('tasks round-trip through SQL as domain values', async (db) => {
   await tasks.add(owner, details('First'));
   await tasks.add(owner, details('Second', 'Notes'));
   const listed = await tasks.listByOwner(owner);
-  assertEquals(listed.map((task) => [task.title, task.description, task.dueDate, task.completed]), [
-    ['Second', 'Notes', null, false],
-    ['First', null, null, false],
-  ]);
+  assertEquals(
+    listed.map((task) => [task.title, task.description, task.dueDate, task.completed]),
+    [
+      ['Second', 'Notes', null, false],
+      ['First', null, null, false],
+    ],
+  );
   const first = listed[1];
   assertEquals(first.ownerId, owner);
 
@@ -74,7 +77,10 @@ dbTest('due dates round-trip as the same calendar day', async (db) => {
   assertEquals((await tasks.findByOwner(owner, leap.id))?.dueDate, '2030-12-31');
   assertEquals(
     (await tasks.listByOwner(owner)).map((task) => [task.title, task.dueDate]),
-    [['Early', '0001-01-01'], ['Moved', '2030-12-31']],
+    [
+      ['Early', '0001-01-01'],
+      ['Moved', '2030-12-31'],
+    ],
   );
   assertEquals(await tasks.update(owner, leap.id, details('Undated')), true);
   assertEquals((await tasks.findByOwner(owner, leap.id))?.dueDate, null);

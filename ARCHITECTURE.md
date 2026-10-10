@@ -53,7 +53,7 @@ implements them. Nothing in the core knows that Hono or PostgreSQL exist.
 
 ```text
 src/app/
-  main.tsx                  composition root: config, adapters, system clock, services, Deno.serve
+  main.tsx                  composition root: config, adapters, system clock, services, serve()
   config.ts                 environment parsing and validation
 
   domain/                   entities, value objects and rules; pure TypeScript
@@ -97,7 +97,7 @@ src/app/
 migrations/                 ordered, checksummed SQL migrations: tables, domains, triggers, grants
 infra/postgres/dev-roles.sql  development-only runtime login (app_web) for setup, compose and CI
 tests/                      domain/, application/, persistence/, security/, web/, architecture
-tools/architecture_lint.ts  deno lint plugin enforcing the dependency rule
+tools/architecture_lint.ts  oxlint plugin enforcing the dependency rule
 ```
 
 ## The dependency rule
@@ -111,20 +111,22 @@ tools/architecture_lint.ts  deno lint plugin enforcing the dependency rule
 
 Adapters never import each other. For example, the web adapter does not know the persistence adapter
 exists, and an adapter receives only the settings it needs, never the whole `Config`. The domain and
-application layers also stay deterministic: no JSX, no `Deno`, `fetch`, `crypto`, `globalThis`,
+application layers also stay deterministic: no JSX, no `process`, `fetch`, `crypto`, `globalThis`,
 `window` or `self`, no `Date` except `new Date(value)`, and no `Math.random()`. Time, randomness and
 I/O have to come in through a port. A parameter or import with one of those names is fine, since
 injection is the point.
 
 This is enforced, not just documented. [`tools/architecture_lint.ts`](tools/architecture_lint.ts) is
-a `deno lint` plugin. It checks every import, re-export, type-only import, `import()` type and
+an oxlint JS plugin. It checks every import, re-export, type-only import, `import()` type and
 dynamic import under `src/app/`, and reports files outside the known layers (only `main.tsx` and
-`config.ts` sit at the root). Relative paths, absolute paths, `file:` URLs and bare specifiers that
-`deno.json` maps to local files are classified by the layer they reach. `npm:`, `jsr:` and `node:`
-specifiers, directly or through the import map, are external packages. Remote URLs and unmapped bare
-specifiers are rejected. The purity check follows references to the globals rather than spellings,
-so `globalThis.fetch`, `Date['now']` and `const D = Date` are caught too. The lint API has no scope
-analysis, so a name declared anywhere in a file counts as locally bound throughout it.
+`config.ts` sit at the root). Relative paths, absolute paths and `file:` URLs are classified by the
+layer they reach. `node:` built-ins and bare specifiers naming a `package.json` dependency are
+external packages. Remote URLs and any other bare specifier are rejected. The purity check follows
+references to the globals rather than spellings, so `globalThis.fetch`, `Date['now']` and
+`const D = Date` are caught too, and it uses oxlint's scope analysis, so only a binding in an
+enclosing scope excuses a name. A third rule allows `process` only in `config.ts` and
+`adapters/persistence/migrate.ts`: Node cannot restrict which environment variables the process
+reads, so the code is held to it instead.
 [`tests/architecture_test.ts`](tests/architecture_test.ts) proves that it catches each kind of
 violation. CI runs both.
 
@@ -194,7 +196,7 @@ as overdue, stay in the domain because they need the `Clock` port.
 | `updated_at` is current    | (not modelled)        | trigger on every update                                  |
 | Owner, ids, history fixed  | `Task` is readonly    | column grants: `app_runtime` cannot update them          |
 
-**Roles.** Migrations run as the schema owner from `MIGRATION_DATABASE_URL` (`deno task migrate`).
+**Roles.** Migrations run as the schema owner from `MIGRATION_DATABASE_URL` (`pnpm migrate`).
 The app and the tests connect with `DATABASE_URL` as a login role that is a member of the NOLOGIN
 role `app_runtime`. Migration 003 creates `app_runtime` if needed and grants it exactly what the
 statements in `adapters/persistence/sql/` use: no DDL, no account deletion, no access to
@@ -273,10 +275,10 @@ meaningful.
 | `tests/architecture_test.ts` | the lint plugin              | in-memory sources                          |
 
 The persistence tests run when `DATABASE_URL` points at a migrated database (CI starts one) and are
-reported as ignored otherwise. Each runs in a transaction that is rolled back. `DATABASE_URL` must
+reported as skipped otherwise. Each runs in a transaction that is rolled back. `DATABASE_URL` must
 be the runtime login, as for the app, not the owner: `schema_test.ts` checks that the guards accept
 every boundary value the domain accepts, refuse invalid rows written with raw SQL, and that the
-runtime role cannot change owners, ids, history or the schema. Run everything with `deno task test`.
+runtime role cannot change owners, ids, history or the schema. Run everything with `pnpm test`.
 
 ## Adding a feature
 
@@ -293,7 +295,7 @@ inside out:
    morph unless there is a reason not to.
 5. **Wire** any new adapter in `main.tsx`.
 
-`deno lint` reports any import that goes the wrong way.
+`pnpm lint` reports any import that goes the wrong way.
 
 ## Decisions
 
@@ -303,6 +305,7 @@ Architecture decision records live in [`docs/adr/`](docs/adr):
 - [0002: Server-rendered hypermedia with Datastar](docs/adr/0002-server-rendered-hypermedia-with-datastar.md)
 - [0003: Due dates are calendar days, judged against today in UTC](docs/adr/0003-due-dates-use-utc-calendar-days.md)
 - [0004: PostgreSQL guards the invariants; the TypeScript domain explains them](docs/adr/0004-postgresql-guards-the-invariants.md)
+- [0005: Replace Deno with Node and pnpm](docs/adr/0005-replace-deno-with-node-and-pnpm.md)
 
 [`docs/plans/bootstrap_plan.md`](docs/plans/bootstrap_plan.md) is the plan the repository was
 bootstrapped from. It is kept for history; where it differs from this document, this document wins.

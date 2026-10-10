@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "ignorePatterns": ["src/app/static/vendor/"],
+  "jsPlugins": ["./tools/architecture_lint.ts"],
+  "rules": {
+    "architecture/layer-dependencies": "error",
+    "architecture/pure-core": "error",
+    "architecture/process-access": "error",
+    // A Hono JSX element is a Promise when it contains an async component, so awaiting one is
+    // correct; the rule cannot see types and flags it.
+    "unicorn/no-unnecessary-await": "off"
+  }
+}

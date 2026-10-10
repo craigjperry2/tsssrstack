@@ -7,7 +7,7 @@ services:
       set -a; . ./.env; set +a;
       export PORT="$amp_port" HOST=127.0.0.1;
       export APP_ORIGIN="$(printf '%s' "$PUBLIC_URL" | cut -d/ -f1-3)";
-      exec deno task dev
+      exec pnpm dev
     health: /readyz
     portal:
       title: App

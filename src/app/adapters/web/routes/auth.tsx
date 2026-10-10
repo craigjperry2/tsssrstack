@@ -5,9 +5,8 @@ import { clearSession, issueSession } from '../session.ts';
 import { Auth } from '../views/auth.tsx';
 
 export function authRoutes(app: Hono<WebEnv>, { identity, session }: WebDeps) {
-  app.get(
-    '/register',
-    (c) => c.get('user') ? c.redirect('/tasks') : page(c, 'Register', <Auth mode='register' />),
+  app.get('/register', (c) =>
+    c.get('user') ? c.redirect('/tasks') : page(c, 'Register', <Auth mode='register' />),
   );
   app.post('/register', async (c) => {
     const data = await form(c);
@@ -23,9 +22,8 @@ export function authRoutes(app: Hono<WebEnv>, { identity, session }: WebDeps) {
     await issueSession(c, session, { userId: id, sessionVersion });
     return c.redirect('/tasks', 303);
   });
-  app.get(
-    '/login',
-    (c) => c.get('user') ? c.redirect('/tasks') : page(c, 'Login', <Auth mode='login' />),
+  app.get('/login', (c) =>
+    c.get('user') ? c.redirect('/tasks') : page(c, 'Login', <Auth mode='login' />),
   );
   app.post('/login', async (c) => {
     const data = await form(c);

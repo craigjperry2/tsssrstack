@@ -14,11 +14,10 @@ dbTest('creating an account with a taken email returns nothing and changes nothi
   const address = email('person');
   const account = await users.create(address, fakeArgon2Hash('first'));
   assert(account, 'created');
-  assertEquals([account.email, account.passwordHash, account.sessionVersion], [
-    address,
-    fakeArgon2Hash('first'),
-    0,
-  ]);
+  assertEquals(
+    [account.email, account.passwordHash, account.sessionVersion],
+    [address, fakeArgon2Hash('first'), 0],
+  );
   assertEquals(await users.create(address, fakeArgon2Hash('second')), undefined);
   assertEquals(await users.findByEmail(address), account);
   assertEquals(await users.findById(account.id), account);

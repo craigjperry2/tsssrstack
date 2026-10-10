@@ -16,11 +16,13 @@ function decode(value: string): Session | undefined {
   try {
     const object = JSON.parse(
       atob(
-        value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - value.length % 4) % 4),
+        value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - (value.length % 4)) % 4),
       ),
     ) as Session;
-    return Number.isSafeInteger(object.userId) && Number.isSafeInteger(object.sessionVersion) &&
-        Number.isSafeInteger(object.issuedAt) && Number.isSafeInteger(object.expiresAt)
+    return Number.isSafeInteger(object.userId) &&
+      Number.isSafeInteger(object.sessionVersion) &&
+      Number.isSafeInteger(object.issuedAt) &&
+      Number.isSafeInteger(object.expiresAt)
       ? object
       : undefined;
   } catch {

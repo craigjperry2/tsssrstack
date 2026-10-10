@@ -14,9 +14,9 @@ permissions:
   contents: read
 jobs:
   # The job name and matrix produce the required status checks on main:
-  # "deno (ubuntu-latest)" and "deno (macos-latest)". Renaming either requires updating the
+  # "node (ubuntu-latest)" and "node (macos-latest)". Renaming either requires updating the
   # "main" ruleset in the repository settings, or every pull request will wait forever.
-  deno:
+  node:
     strategy: { matrix: { os: [ubuntu-latest, macos-latest] } }
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -30,9 +30,11 @@ jobs:
         with:
           persist-credentials: false
       - uses: cachix/install-nix-action@13d8dd58da0234aa297dedd986986ccb8e7f3e24 # v31.11.1
-      - run: nix develop -c deno fmt --check
-      - run: nix develop -c deno lint
-      - run: nix develop -c deno check src/app/main.tsx
+      # Exactly the lockfile; pnpm-workspace.yaml re-checks release age and trust for every entry.
+      - run: nix develop -c pnpm install --frozen-lockfile
+      - run: nix develop -c pnpm fmt:check
+      - run: nix develop -c pnpm lint
+      - run: nix develop -c pnpm check
       - name: Start PostgreSQL and apply migrations
         run: |
           nix develop -c sh -c '
@@ -42,8 +44,8 @@ jobs:
               -o "-c listen_addresses=127.0.0.1 -c port=5432 -k $RUNNER_TEMP"
             createdb -h 127.0.0.1 -U app app
             psql -h 127.0.0.1 -U app -d app -X -q -v ON_ERROR_STOP=1 -f infra/postgres/dev-roles.sql
-            deno task migrate'
-      - run: nix develop -c deno task test
-      - run: nix develop -c deno audit
+            pnpm migrate'
+      - run: nix develop -c pnpm test
+      - run: nix develop -c pnpm audit
       - name: Verify vendored assets match SHA256SUMS
         run: nix develop -c sh -c 'cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS'

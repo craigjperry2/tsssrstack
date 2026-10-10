@@ -57,18 +57,20 @@ const dummyHash =
 
 function base64UrlDecode(value: string): Uint8Array {
   const base64 = value.replaceAll('-', '+').replaceAll('_', '/');
-  return Uint8Array.from(
-    atob(base64 + '='.repeat((4 - base64.length % 4) % 4)),
-    (c) => c.charCodeAt(0),
+  return Uint8Array.from(atob(base64 + '='.repeat((4 - (base64.length % 4)) % 4)), (c) =>
+    c.charCodeAt(0),
   );
 }
 
 test('verifying without a stored hash is false even if the dummy hash matches', async () => {
   const dummyBytes = base64UrlDecode(dummyHash.split('$').at(-1)!);
   assertEquals(dummyBytes.length, 32);
-  await withDeriveBits(() => Promise.resolve(dummyBytes.slice().buffer), async () => {
-    assertEquals(await hasher.verify('anything', undefined), false);
-    // Control: the stub really does make the dummy hash match.
-    assertEquals(await hasher.verify('anything', dummyHash), true);
-  });
+  await withDeriveBits(
+    () => Promise.resolve(dummyBytes.slice().buffer),
+    async () => {
+      assertEquals(await hasher.verify('anything', undefined), false);
+      // Control: the stub really does make the dummy hash match.
+      assertEquals(await hasher.verify('anything', dummyHash), true);
+    },
+  );
 });

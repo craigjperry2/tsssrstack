@@ -22,8 +22,8 @@
       "parameters": {
         "strict_required_status_checks_policy": false,
         "required_status_checks": [
-          { "context": "deno (ubuntu-latest)", "integration_id": 15368 },
-          { "context": "deno (macos-latest)", "integration_id": 15368 }
+          { "context": "node (ubuntu-latest)", "integration_id": 15368 },
+          { "context": "node (macos-latest)", "integration_id": 15368 }
         ]
       }
     }
