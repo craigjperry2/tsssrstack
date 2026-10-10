@@ -10,9 +10,9 @@ try {
   await sql`SELECT pg_advisory_lock(829225924001)`;
   await sql`CREATE SCHEMA IF NOT EXISTS app`;
   await sql`CREATE TABLE IF NOT EXISTS app.schema_migrations (version integer PRIMARY KEY, filename text NOT NULL, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now())`;
-  const files = readdirSync('migrations', { withFileTypes: true }).filter((f) =>
-    f.isFile() && /^\d{3}_.+\.sql$/u.test(f.name)
-  ).sort((a, b) => a.name.localeCompare(b.name));
+  const files = readdirSync('migrations', { withFileTypes: true })
+    .filter((f) => f.isFile() && /^\d{3}_.+\.sql$/u.test(f.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
   for (const file of files) {
     const version = Number(file.name.slice(0, 3));
     const content = readFileSync(`migrations/${file.name}`, 'utf8');

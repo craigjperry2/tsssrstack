@@ -21,15 +21,15 @@ security.
 **Node runs the application and pnpm manages its dependencies.** Both come from the Nix dev shell,
 pinned by `flake.lock`, like PostgreSQL. The rest of the toolchain is pinned in `package.json`:
 
-| Concern            | Deno           | Now                                                           |
-| ------------------ | -------------- | ------------------------------------------------------------- |
-| Run, sandbox       | `deno run`     | `node --permission` running `dist/` (see below)               |
-| TypeScript and JSX | native         | `tsc` checks and compiles to `dist/`                          |
-| Serve Hono         | `Deno.serve`   | `@hono/node-server`, Hono's own adapter                       |
-| Test               | `deno test`    | `node:test`                                                   |
+| Concern            | Deno            | Now                                                           |
+| ------------------ | --------------- | ------------------------------------------------------------- |
+| Run, sandbox       | `deno run`      | `node --permission` running `dist/` (see below)               |
+| TypeScript and JSX | native          | `tsc` checks and compiles to `dist/`                          |
+| Serve Hono         | `Deno.serve`    | `@hono/node-server`, Hono's own adapter                       |
+| Test               | `deno test`     | `node:test`                                                   |
 | Format, lint       | `deno fmt/lint` | oxfmt, oxlint; the architecture plugin is an oxlint JS plugin |
-| Dependencies       | `deno.json`    | pnpm, `pnpm-lock.yaml`; Hono moves from JSR to npm            |
-| Audit              | `deno audit`   | `pnpm audit`                                                  |
+| Dependencies       | `deno.json`     | pnpm, `pnpm-lock.yaml`; Hono moves from JSR to npm            |
+| Audit              | `deno audit`    | `pnpm audit`                                                  |
 
 Bun was rejected because it has no permission model at all, and because it lacks the WebCrypto
 Argon2id the password adapter uses (it offers a Bun-only API instead). Node computes the same
@@ -42,12 +42,12 @@ never run.
 
 **Node's permission model** replaces Deno's flags. It is coarser:
 
-| Deno                                      | Node                                                    |
-| ----------------------------------------- | ------------------------------------------------------- |
-| `--allow-read=` static and SQL paths      | the same, plus `dist/` and `node_modules/` (code loads) |
-| `--allow-net=127.0.0.1,localhost,...`     | `--allow-net`, all or nothing                           |
-| `--allow-env=ENV,APP_ORIGIN,...`          | nothing: Node cannot restrict environment access        |
-| no write, subprocess, FFI, workers        | the same by default under `--permission`                |
+| Deno                                  | Node                                                    |
+| ------------------------------------- | ------------------------------------------------------- |
+| `--allow-read=` static and SQL paths  | the same, plus `dist/` and `node_modules/` (code loads) |
+| `--allow-net=127.0.0.1,localhost,...` | `--allow-net`, all or nothing                           |
+| `--allow-env=ENV,APP_ORIGIN,...`      | nothing: Node cannot restrict environment access        |
+| no write, subprocess, FFI, workers    | the same by default under `--permission`                |
 
 To compensate for the environment, the architecture lint allows `process` only in `config.ts`
 and the migration runner. That guards against accidental use in our code, not against a malicious

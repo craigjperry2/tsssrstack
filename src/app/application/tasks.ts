@@ -13,9 +13,7 @@ export type Invalid = Readonly<{ kind: 'invalid'; problems: TaskProblems }>;
 export type NotFound = Readonly<{ kind: 'notFound' }>;
 const notFound: NotFound = { kind: 'notFound' };
 
-export function taskService(
-  { tasks, clock }: Readonly<{ tasks: TaskRepository; clock: Clock }>,
-) {
+export function taskService({ tasks, clock }: Readonly<{ tasks: TaskRepository; clock: Clock }>) {
   return {
     // "Today" is read once, so every task in one list is judged against the same date.
     async list(ownerId: number): Promise<ListedTask[]> {
@@ -41,15 +39,15 @@ export function taskService(
     ): Promise<Result<void, Invalid | NotFound>> {
       const details = parseTaskDetails(input);
       if (!details.ok) return err({ kind: 'invalid', problems: details.error });
-      return await tasks.update(ownerId, taskId, details.value) ? ok(undefined) : err(notFound);
+      return (await tasks.update(ownerId, taskId, details.value)) ? ok(undefined) : err(notFound);
     },
 
     async toggle(ownerId: number, taskId: number): Promise<Result<void, NotFound>> {
-      return await tasks.toggleCompleted(ownerId, taskId) ? ok(undefined) : err(notFound);
+      return (await tasks.toggleCompleted(ownerId, taskId)) ? ok(undefined) : err(notFound);
     },
 
     async remove(ownerId: number, taskId: number): Promise<Result<void, NotFound>> {
-      return await tasks.remove(ownerId, taskId) ? ok(undefined) : err(notFound);
+      return (await tasks.remove(ownerId, taskId)) ? ok(undefined) : err(notFound);
     },
   };
 }

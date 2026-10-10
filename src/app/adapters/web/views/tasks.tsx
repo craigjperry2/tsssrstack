@@ -7,21 +7,28 @@ type Values = { title?: string; description?: string; dueDate?: string };
 type Errors = Record<string, string>;
 
 const ErrorSummary: FC<{ errors: Errors }> = ({ errors }) =>
-  Object.keys(errors).length > 0
-    ? (
-      <div class='notification is-danger is-light content' aria-live='polite'>
-        <strong>Please correct the following:</strong>
-        <ul>{Object.values(errors).map((error, index) => <li key={index}>{error}</li>)}</ul>
-      </div>
-    )
-    : null;
+  Object.keys(errors).length > 0 ? (
+    <div class='notification is-danger is-light content' aria-live='polite'>
+      <strong>Please correct the following:</strong>
+      <ul>
+        {Object.values(errors).map((error, index) => (
+          <li key={index}>{error}</li>
+        ))}
+      </ul>
+    </div>
+  ) : null;
 
-const TaskFields: FC<{ prefix: string; values: Values; errors: Errors; bind?: boolean }> = (
-  { prefix, values, errors, bind },
-) => (
+const TaskFields: FC<{ prefix: string; values: Values; errors: Errors; bind?: boolean }> = ({
+  prefix,
+  values,
+  errors,
+  bind,
+}) => (
   <>
     <div class='field'>
-      <label class='label' htmlFor={`${prefix}-title`}>Title</label>
+      <label class='label' htmlFor={`${prefix}-title`}>
+        Title
+      </label>
       <div class='control'>
         <input
           class={errors.title ? 'input is-danger' : 'input'}
@@ -34,7 +41,9 @@ const TaskFields: FC<{ prefix: string; values: Values; errors: Errors; bind?: bo
       </div>
     </div>
     <div class='field'>
-      <label class='label' htmlFor={`${prefix}-description`}>Description</label>
+      <label class='label' htmlFor={`${prefix}-description`}>
+        Description
+      </label>
       <div class='control'>
         <textarea
           class={errors.description ? 'textarea is-danger' : 'textarea'}
@@ -48,7 +57,9 @@ const TaskFields: FC<{ prefix: string; values: Values; errors: Errors; bind?: bo
       </div>
     </div>
     <div class='field'>
-      <label class='label' htmlFor={`${prefix}-due-date`}>Due date</label>
+      <label class='label' htmlFor={`${prefix}-due-date`}>
+        Due date
+      </label>
       <div class='control'>
         <input
           class={errors.dueDate ? 'input is-danger' : 'input'}
@@ -135,31 +146,35 @@ const editorId = (taskId: number) => `edit-${id(taskId)}`;
 export const ClosedEditor: FC<{ taskId: number }> = ({ taskId }) => (
   <tr id={editorId(taskId)} data-ignore-morph hidden></tr>
 );
-export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = (
-  { task, values, errors = {} },
-) => {
+export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = ({
+  task,
+  values,
+  errors = {},
+}) => {
   const url = `/tasks/${id(task.id)}`;
   return (
     <tr id={editorId(task.id)} data-ignore-morph>
       <td colSpan={3}>
-        <form
-          aria-label={`Edit ${task.title}`}
-          data-on:submit__prevent={postExpr(`${url}/edit`)}
-        >
+        <form aria-label={`Edit ${task.title}`} data-on:submit__prevent={postExpr(`${url}/edit`)}>
           <ErrorSummary errors={errors} />
           <TaskFields
             prefix={editorId(task.id)}
-            values={values ??
-              {
+            values={
+              values ?? {
                 title: task.title,
                 description: task.description ?? '',
                 dueDate: task.dueDate ?? '',
-              }}
+              }
+            }
             errors={errors}
           />
           <div class='buttons'>
-            <button type='submit' class='button is-primary'>Save</button>
-            <button type='button' class='button' data-on:click={getExpr(url)}>Cancel</button>
+            <button type='submit' class='button is-primary'>
+              Save
+            </button>
+            <button type='button' class='button' data-on:click={getExpr(url)}>
+              Cancel
+            </button>
           </div>
         </form>
       </td>
@@ -167,14 +182,12 @@ export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = 
   );
 };
 
-export const App: FC<
-  {
-    email: string;
-    items: ListedTask[];
-    values?: Values;
-    errors?: Errors;
-  }
-> = ({ email, items, values = {}, errors = {} }) => (
+export const App: FC<{
+  email: string;
+  items: ListedTask[];
+  values?: Values;
+  errors?: Errors;
+}> = ({ email, items, values = {}, errors = {} }) => (
   <div id='app'>
     <nav class='level'>
       <div class='level-left'>
@@ -182,9 +195,13 @@ export const App: FC<
       </div>
       <form class='level-right' method='post' action='/logout'>
         <span class='level-item has-text-grey'>{email}</span>
-        <a class='level-item' href='/profile'>Profile</a>
+        <a class='level-item' href='/profile'>
+          Profile
+        </a>
         <div class='level-item'>
-          <button type='submit' class='button is-small'>Log out</button>
+          <button type='submit' class='button is-small'>
+            Log out
+          </button>
         </div>
       </form>
     </nav>
@@ -192,28 +209,30 @@ export const App: FC<
     <form class='block' data-on:submit__prevent={postExpr('/tasks')}>
       <ErrorSummary errors={errors} />
       <TaskFields prefix='task' values={values} errors={errors} bind />
-      <button type='submit' class='button is-primary'>Add task</button>
+      <button type='submit' class='button is-primary'>
+        Add task
+      </button>
     </form>
-    {items.length === 0
-      ? <p>No tasks yet. Add one above.</p>
-      : (
-        <table class='table is-fullwidth is-hoverable' aria-label='Task list'>
-          <thead>
-            <tr>
-              <th scope='col'>Done</th>
-              <th scope='col'>Task</th>
-              <th scope='col'>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.map((task) => (
-              <Fragment key={String(task.id)}>
-                <TaskRow task={task} />
-                <ClosedEditor taskId={task.id} />
-              </Fragment>
-            ))}
-          </tbody>
-        </table>
-      )}
+    {items.length === 0 ? (
+      <p>No tasks yet. Add one above.</p>
+    ) : (
+      <table class='table is-fullwidth is-hoverable' aria-label='Task list'>
+        <thead>
+          <tr>
+            <th scope='col'>Done</th>
+            <th scope='col'>Task</th>
+            <th scope='col'>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((task) => (
+            <Fragment key={String(task.id)}>
+              <TaskRow task={task} />
+              <ClosedEditor taskId={task.id} />
+            </Fragment>
+          ))}
+        </tbody>
+      </table>
+    )}
   </div>
 );

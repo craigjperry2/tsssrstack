@@ -54,13 +54,16 @@ test('listing judges every task against the UTC date of the clock', async () => 
   const [doneLate] = await tasks.list(owner);
   await tasks.toggle(owner, doneLate.id);
   const listed = await tasks.list(owner);
-  assertEquals(listed.map((task) => [task.title, task.overdue]), [
-    ['Done late', false],
-    ['Undated', false],
-    ['Tomorrow', false],
-    ['Today', false],
-    ['Yesterday', true],
-  ]);
+  assertEquals(
+    listed.map((task) => [task.title, task.overdue]),
+    [
+      ['Done late', false],
+      ['Undated', false],
+      ['Tomorrow', false],
+      ['Today', false],
+      ['Yesterday', true],
+    ],
+  );
 });
 
 test('listing reads the clock once, so midnight cannot split one list', async () => {
@@ -76,8 +79,11 @@ test('listing reads the clock once, so midnight cannot split one list', async ()
   assertEquals(reads, 0);
   const listed = await tasks.list(owner);
   assertEquals(reads, 1);
-  assertEquals(listed.map((task) => [task.title, task.overdue]), [
-    ['Second', false],
-    ['First', false],
-  ]);
+  assertEquals(
+    listed.map((task) => [task.title, task.overdue]),
+    [
+      ['Second', false],
+      ['First', false],
+    ],
+  );
 });

@@ -18,9 +18,11 @@ function expectLint(title: string, cases: Case[], target: Plugin = plugin) {
   describe(title, () => {
     for (const [name, rule] of Object.entries(target.rules)) {
       tester.run(name, rule, {
-        valid: cases.filter(([, , rules]) => !rules.includes(name))
+        valid: cases
+          .filter(([, , rules]) => !rules.includes(name))
           .map(([filename, code]) => ({ filename, code })),
-        invalid: cases.filter(([, , rules]) => rules.includes(name))
+        invalid: cases
+          .filter(([, , rules]) => rules.includes(name))
           .map(([filename, code, rules]) => ({
             filename,
             code,
@@ -107,7 +109,7 @@ expectLint(
 );
 
 // The default export reads the repository's own package.json.
-expectLint('the default plugin uses this repository\'s dependencies', [
+expectLint("the default plugin uses this repository's dependencies", [
   [web, "import { jsx } from 'hono/jsx';", []],
   [web, "import x from 'not-in-package-json';", [layers]],
 ]);
@@ -155,12 +157,14 @@ expectLint(
 describe('globals declared in the lint configuration are still globals', () => {
   tester.run(purity, plugin.rules[purity], {
     valid: [],
-    invalid: [{
-      filename: domain,
-      code: 'fetch(url);',
-      languageOptions: { globals: { fetch: 'readonly' } },
-      errors: 1,
-    }],
+    invalid: [
+      {
+        filename: domain,
+        code: 'fetch(url);',
+        languageOptions: { globals: { fetch: 'readonly' } },
+        errors: 1,
+      },
+    ],
   });
 });
 
@@ -189,9 +193,11 @@ expectLint('only config.ts and the migration runner may use process', [
     "import process from 'node:process'; const url = process.env.MIGRATION_DATABASE_URL;",
     [],
   ],
-  ['src/app/adapters/persistence/client.ts', 'const url = process.env.DATABASE_URL;', [
-    processAccess,
-  ]],
+  [
+    'src/app/adapters/persistence/client.ts',
+    'const url = process.env.DATABASE_URL;',
+    [processAccess],
+  ],
   [web, "import { env } from 'node:process';", [processAccess]],
   [web, "import process from 'process';", [layers, processAccess]],
   ['src/app/main.tsx', 'process.exit(1);', [processAccess]],

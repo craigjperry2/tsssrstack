@@ -29,7 +29,7 @@ const items: ListedTask[] = [
   },
 ];
 const render = async (props: Partial<Parameters<typeof App>[0]> = {}) =>
-  String(await <App email='person@example.test' items={items} {...props} />);
+  String(await (<App email='person@example.test' items={items} {...props} />));
 
 test('tasks render as a read-only table, not edit forms', async () => {
   const html = await render();
@@ -48,12 +48,12 @@ test('every task has a closed editor row that fat morphs leave alone', async () 
   const html = await render();
   const editor = `<tr id="edit-${encodePublicId(1)}" data-ignore-morph="true" hidden=""></tr>`;
   assert(html.includes(editor), 'closed editor placeholder with data-ignore-morph');
-  assert(String(await <ClosedEditor taskId={1} />) === editor, 'Cancel/Save restore it');
+  assert(String(await (<ClosedEditor taskId={1} />)) === editor, 'Cancel/Save restore it');
 });
 
 test('the task editor is a form that keeps submitted values and shows errors', async () => {
   const prefix = `edit-${encodePublicId(1)}`;
-  const fresh = String(await <TaskEditor task={items[0]} />);
+  const fresh = String(await (<TaskEditor task={items[0]} />));
   assert(fresh.includes(`<tr id="${prefix}" data-ignore-morph="true">`), 'editor survives morphs');
   assert(fresh.includes(`id="${prefix}-title" name="title" value="Buy milk"`), 'current title');
   const html = String(

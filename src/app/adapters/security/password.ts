@@ -10,14 +10,14 @@ type Argon2Params = Algorithm & {
 };
 
 function b64(bytes: Uint8Array): string {
-  return btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll(
-    '=',
-    '',
-  );
+  return btoa(String.fromCharCode(...bytes))
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replaceAll('=', '');
 }
 function unb64(value: string): Uint8Array {
-  const padded = value.replaceAll('-', '+').replaceAll('_', '/') +
-    '='.repeat((4 - value.length % 4) % 4);
+  const padded =
+    value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - (value.length % 4)) % 4);
   return Uint8Array.from(atob(padded), (c) => c.charCodeAt(0));
 }
 function parsePhc(value: string): { salt: Uint8Array; hash: Uint8Array } | undefined {

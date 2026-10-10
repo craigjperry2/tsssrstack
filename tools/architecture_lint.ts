@@ -46,7 +46,10 @@ const isLocalPath = (specifier: string) =>
   specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('file:');
 // The package a bare specifier names: `hono/jsx` → `hono`, `@hono/node-server/x` → `@hono/node-server`.
 const packageName = (specifier: string) =>
-  specifier.split('/').slice(0, specifier.startsWith('@') ? 2 : 1).join('/');
+  specifier
+    .split('/')
+    .slice(0, specifier.startsWith('@') ? 2 : 1)
+    .join('/');
 
 type Target =
   | { kind: 'external' }
@@ -86,9 +89,12 @@ function inTypePosition(node: Node): boolean {
   for (let parent = node.parent; parent; child = parent, parent = parent.parent) {
     if (typeContexts.has(parent.type)) return true;
     if (
-      (parent.type === 'TSAsExpression' || parent.type === 'TSSatisfiesExpression' ||
-        parent.type === 'TSTypeAssertion') && parent.typeAnnotation === child
-    ) return true;
+      (parent.type === 'TSAsExpression' ||
+        parent.type === 'TSSatisfiesExpression' ||
+        parent.type === 'TSTypeAssertion') &&
+      parent.typeAnnotation === child
+    )
+      return true;
   }
   return false;
 }
@@ -186,7 +192,8 @@ export function architecturePlugin(dependencies: Iterable<string>): Plugin {
               if (target.kind === 'unresolved') {
                 context.report({
                   node,
-                  message: `Cannot classify '${specifier}': ${target.reason}. Use a relative ` +
+                  message:
+                    `Cannot classify '${specifier}': ${target.reason}. Use a relative ` +
                     'path, a node: built-in, or a package listed in package.json.',
                 });
               } else if (target.kind === 'external') {
@@ -201,7 +208,8 @@ export function architecturePlugin(dependencies: Iterable<string>): Plugin {
                 if (!to || !allowed(from, to)) {
                   context.report({
                     node,
-                    message: `${from} must not depend on ${to ?? target.path} ('${specifier}'). ` +
+                    message:
+                      `${from} must not depend on ${to ?? target.path} ('${specifier}'). ` +
                       'See the dependency rule in ARCHITECTURE.md.',
                   });
                 }
@@ -226,7 +234,8 @@ export function architecturePlugin(dependencies: Iterable<string>): Plugin {
           const report = (node: Node, what: string) =>
             context.report({
               node,
-              message: `${what} is not allowed in the domain or application layers. ` +
+              message:
+                `${what} is not allowed in the domain or application layers. ` +
                 'Inject it through a port, such as Clock.',
             });
           return {
@@ -239,7 +248,9 @@ export function architecturePlugin(dependencies: Iterable<string>): Plugin {
               if (bannedGlobals.includes(id.name)) {
                 report(id, id.name);
               } else if (id.name === 'Date') {
-                const constructed = parent.type === 'NewExpression' && parent.callee === id &&
+                const constructed =
+                  parent.type === 'NewExpression' &&
+                  parent.callee === id &&
                   parent.arguments.length > 0;
                 if (!constructed) report(id, 'Date, other than new Date(value),');
               } else {
@@ -247,11 +258,12 @@ export function architecturePlugin(dependencies: Iterable<string>): Plugin {
                 const property = !member
                   ? undefined
                   : !parent.computed && parent.property.type === 'Identifier'
-                  ? parent.property.name
-                  : parent.computed && parent.property.type === 'Literal' &&
-                      typeof parent.property.value === 'string'
-                  ? parent.property.value
-                  : undefined;
+                    ? parent.property.name
+                    : parent.computed &&
+                        parent.property.type === 'Literal' &&
+                        typeof parent.property.value === 'string'
+                      ? parent.property.value
+                      : undefined;
                 if (property === undefined || property === 'random') report(id, 'Math.random()');
               }
             },
@@ -271,7 +283,8 @@ export function architecturePlugin(dependencies: Iterable<string>): Plugin {
           const report = (node: Node) =>
             context.report({
               node,
-              message: `Only ${processFiles.join(' and ')} may use process; read configuration ` +
+              message:
+                `Only ${processFiles.join(' and ')} may use process; read configuration ` +
                 'in config.ts and pass it in.',
             });
           return {

@@ -30,10 +30,10 @@ const passwordMessages: Record<PasswordProblem, string> = {
 export const registrationMessage = (error: RegistrationError): string =>
   error === 'invalidEmail'
     ? 'Enter a valid email address.'
-    // Deliberately vague, like the login failure message.
-    : error === 'emailInUse'
-    ? 'Unable to create that account.'
-    : passwordMessages[error];
+    : // Deliberately vague, like the login failure message.
+      error === 'emailInUse'
+      ? 'Unable to create that account.'
+      : passwordMessages[error];
 
 export const loginMessage = 'Invalid email or password.';
 

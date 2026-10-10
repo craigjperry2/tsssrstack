@@ -30,12 +30,7 @@ export function taskRoutes(app: Hono<WebEnv>, { tasks }: WebDeps) {
   const appPatch = async (c: AppContext, values?: TaskInput, errors?: Record<string, string>) => {
     const user = currentUser(c);
     return patchElements(
-      <App
-        email={user.email}
-        items={await tasks.list(user.id)}
-        values={values}
-        errors={errors}
-      />,
+      <App email={user.email} items={await tasks.list(user.id)} values={values} errors={errors} />,
     );
   };
   const ownedTask = (c: AppContext) => {
@@ -45,11 +40,7 @@ export function taskRoutes(app: Hono<WebEnv>, { tasks }: WebDeps) {
 
   app.get('/tasks', requireUser, async (c) => {
     const user = currentUser(c);
-    return page(
-      c,
-      'Tasks',
-      <App email={user.email} items={await tasks.list(user.id)} />,
-    );
+    return page(c, 'Tasks', <App email={user.email} items={await tasks.list(user.id)} />);
   });
   app.post('/tasks', requireUser, async (c) => {
     const input = taskInput(await form(c));
@@ -89,7 +80,10 @@ export function taskRoutes(app: Hono<WebEnv>, { tasks }: WebDeps) {
       await patchElements(<TaskEditor task={task} values={input} errors={errors} />, 'replace'),
     ]);
   });
-  for (const [path, command] of [['toggle', tasks.toggle], ['delete', tasks.remove]] as const) {
+  for (const [path, command] of [
+    ['toggle', tasks.toggle],
+    ['delete', tasks.remove],
+  ] as const) {
     app.post(`/tasks/:publicId/${path}`, requireUser, async (c) => {
       const id = taskId(c);
       if (!id) return c.notFound();

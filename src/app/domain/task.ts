@@ -36,7 +36,7 @@ export function parseTaskTitle(raw: string): Result<TaskTitle, 'required' | 'too
 export type TaskDescription = Brand<string, 'TaskDescription'>;
 export function parseTaskDescription(raw: string): Result<TaskDescription | null, 'tooLong'> {
   if (codePoints(raw) > 5000) return err('tooLong');
-  return ok(raw ? raw as TaskDescription : null);
+  return ok(raw ? (raw as TaskDescription) : null);
 }
 
 // Optional. Any real date is accepted, including one in the past.

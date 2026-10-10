@@ -14,9 +14,10 @@ import type { UserRepository } from './ports/user-repository.ts';
 export type RegistrationError = 'invalidEmail' | PasswordProblem | 'emailInUse';
 export type PasswordChangeError = 'wrongPassword' | PasswordProblem;
 
-export function identityService(
-  { users, passwords }: Readonly<{ users: UserRepository; passwords: PasswordHasher }>,
-) {
+export function identityService({
+  users,
+  passwords,
+}: Readonly<{ users: UserRepository; passwords: PasswordHasher }>) {
   return {
     async register(
       rawEmail: string,
@@ -47,7 +48,7 @@ export function identityService(
       newPassword: string,
     ): Promise<Result<Principal, PasswordChangeError>> {
       const account = await users.findById(userId);
-      if (!account || !await passwords.verify(currentPassword, account.passwordHash)) {
+      if (!account || !(await passwords.verify(currentPassword, account.passwordHash))) {
         return err('wrongPassword');
       }
       const problem = checkPassword(newPassword, account.email);

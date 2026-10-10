@@ -2,10 +2,6 @@
   "name": "tsssrstack",
   "private": true,
   "type": "module",
-  "engines": {
-    "node": ">=26",
-    "pnpm": ">=12"
-  },
   "scripts": {
     "build": "tsc",
     "check": "tsc --noEmit",
@@ -30,5 +26,9 @@
     "oxfmt": "0.71.0",
     "oxlint": "1.86.0",
     "typescript": "7.0.2"
+  },
+  "engines": {
+    "node": ">=26",
+    "pnpm": ">=12"
   }
 }

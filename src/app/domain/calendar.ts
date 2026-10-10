@@ -12,8 +12,10 @@ export function parseCalendarDate(raw: string): Result<CalendarDate, 'invalid'> 
   // dates such as 2027-02-29 come back as a different day and are rejected.
   const date = new Date(0);
   date.setUTCFullYear(year, month - 1, day);
-  return year >= 1 && date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 &&
-      date.getUTCDate() === day
+  return year >= 1 &&
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
     ? ok(raw as CalendarDate)
     : err('invalid');
 }
