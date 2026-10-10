@@ -1,7 +1,8 @@
+import { test } from 'node:test';
 import { argon2PasswordHasher as hasher } from '../../src/app/adapters/security/password.ts';
 import { assert, assertEquals } from '../support/assert.ts';
 
-Deno.test('Argon2id hashes are salted PHC strings that verify only the right password', async () => {
+test('Argon2id hashes are salted PHC strings that verify only the right password', async () => {
   const first = await hasher.hash('correct-horse-battery');
   const second = await hasher.hash('correct-horse-battery');
   assert(first.startsWith('$argon2id$v=19$m=65536,t=3,p=1$'), first);
@@ -24,7 +25,7 @@ async function withDeriveBits(replacement: DeriveBits, body: () => Promise<void>
   }
 }
 
-Deno.test('verifying without a stored hash does one identical Argon2id derivation', async () => {
+test('verifying without a stored hash does one identical Argon2id derivation', async () => {
   const real = await hasher.hash('a-real-password');
   const original = crypto.subtle.deriveBits.bind(crypto.subtle);
   const calls: unknown[] = [];
@@ -62,7 +63,7 @@ function base64UrlDecode(value: string): Uint8Array {
   );
 }
 
-Deno.test('verifying without a stored hash is false even if the dummy hash matches', async () => {
+test('verifying without a stored hash is false even if the dummy hash matches', async () => {
   const dummyBytes = base64UrlDecode(dummyHash.split('$').at(-1)!);
   assertEquals(dummyBytes.length, 32);
   await withDeriveBits(() => Promise.resolve(dummyBytes.slice().buffer), async () => {

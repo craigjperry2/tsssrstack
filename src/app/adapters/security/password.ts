@@ -34,9 +34,14 @@ function parsePhc(value: string): { salt: Uint8Array; hash: Uint8Array } | undef
   }
 }
 async function derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'Argon2id', false, [
-    'deriveBits',
-  ]);
+  // 'raw-secret' is the format the spec defines for Argon2 keys; Node accepts only that one.
+  const key = await crypto.subtle.importKey(
+    'raw-secret',
+    encoder.encode(password),
+    'Argon2id',
+    false,
+    ['deriveBits'],
+  );
   const saltCopy = new ArrayBuffer(salt.byteLength);
   new Uint8Array(saltCopy).set(salt);
   const algorithm: Argon2Params = { ...parameters, nonce: saltCopy };

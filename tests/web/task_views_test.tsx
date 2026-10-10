@@ -1,3 +1,4 @@
+import { test } from 'node:test';
 import { App, ClosedEditor, TaskEditor } from '../../src/app/adapters/web/views/tasks.tsx';
 import { encodePublicId } from '../../src/app/adapters/web/public-id.ts';
 import type { ListedTask } from '../../src/app/application/tasks.ts';
@@ -30,7 +31,7 @@ const items: ListedTask[] = [
 const render = async (props: Partial<Parameters<typeof App>[0]> = {}) =>
   String(await <App email='person@example.test' items={items} {...props} />);
 
-Deno.test('tasks render as a read-only table, not edit forms', async () => {
+test('tasks render as a read-only table, not edit forms', async () => {
   const html = await render();
   assert(/<table [^>]*aria-label="Task list">/.test(html), 'expected a task table');
   assert(count(html, /<tr id="task-/g) === 2, 'expected one row per task');
@@ -43,14 +44,14 @@ Deno.test('tasks render as a read-only table, not edit forms', async () => {
   assert(html.includes(`@get(&#39;${editUrl}&#39;)`), 'each row offers an Edit action');
 });
 
-Deno.test('every task has a closed editor row that fat morphs leave alone', async () => {
+test('every task has a closed editor row that fat morphs leave alone', async () => {
   const html = await render();
   const editor = `<tr id="edit-${encodePublicId(1)}" data-ignore-morph="true" hidden=""></tr>`;
   assert(html.includes(editor), 'closed editor placeholder with data-ignore-morph');
   assert(String(await <ClosedEditor taskId={1} />) === editor, 'Cancel/Save restore it');
 });
 
-Deno.test('the task editor is a form that keeps submitted values and shows errors', async () => {
+test('the task editor is a form that keeps submitted values and shows errors', async () => {
   const prefix = `edit-${encodePublicId(1)}`;
   const fresh = String(await <TaskEditor task={items[0]} />);
   assert(fresh.includes(`<tr id="${prefix}" data-ignore-morph="true">`), 'editor survives morphs');
@@ -70,13 +71,13 @@ Deno.test('the task editor is a form that keeps submitted values and shows error
   assert(html.includes(`@get(&#39;/tasks/${encodePublicId(1)}&#39;)`), 'cancel action');
 });
 
-Deno.test('add form keeps values and shows errors after validation failure', async () => {
+test('add form keeps values and shows errors after validation failure', async () => {
   const html = await render({ values: { title: '', description: 'Keep me' }, errors: { t: 'X' } });
   assert(html.includes('>Keep me</textarea>'), 'description is kept');
   assert(html.includes('<li>X</li>'), 'errors are shown');
 });
 
-Deno.test('due dates render as tags, with overdue tasks flagged', async () => {
+test('due dates render as tags, with overdue tasks flagged', async () => {
   const html = await render({
     items: [
       { ...items[1], id: 3, dueDate: '2026-10-01' as CalendarDate, overdue: true },

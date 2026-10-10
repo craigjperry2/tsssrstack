@@ -1,33 +1,29 @@
+import process from 'node:process';
+import { test } from 'node:test';
 import type { TransactionSql } from 'postgres';
 import { createSql } from '../../src/app/adapters/persistence/client.ts';
 
 // Repository contract and schema tests run against a real, migrated PostgreSQL when DATABASE_URL
-// is available (CI provides one) and are reported as ignored otherwise. DATABASE_URL is the
-// runtime login (a member of app_runtime), as for the application, not the schema owner.
-const granted = Deno.permissions.querySync({ name: 'env', variable: 'DATABASE_URL' }).state ===
-  'granted';
-const databaseUrl = granted ? Deno.env.get('DATABASE_URL') : undefined;
+// is set (CI provides one) and are reported as skipped otherwise. DATABASE_URL is the runtime
+// login (a member of app_runtime), as for the application, not the schema owner.
+const databaseUrl = process.env.DATABASE_URL;
 
 class Rollback extends Error {}
 
 // Runs fn in a transaction that is always rolled back, so tests leave no rows behind.
 export function dbTest(name: string, fn: (db: TransactionSql) => Promise<void>) {
-  Deno.test({
-    name,
-    ignore: !databaseUrl,
-    async fn() {
-      const sql = createSql(databaseUrl!);
-      try {
-        await sql.begin(async (tx) => {
-          await fn(tx);
-          throw new Rollback();
-        });
-      } catch (error) {
-        if (!(error instanceof Rollback)) throw error;
-      } finally {
-        await sql.end();
-      }
-    },
+  test(name, { skip: !databaseUrl }, async () => {
+    const sql = createSql(databaseUrl!);
+    try {
+      await sql.begin(async (tx) => {
+        await fn(tx);
+        throw new Rollback();
+      });
+    } catch (error) {
+      if (!(error instanceof Rollback)) throw error;
+    } finally {
+      await sql.end();
+    }
   });
 }
 

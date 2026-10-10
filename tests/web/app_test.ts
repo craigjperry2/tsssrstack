@@ -1,4 +1,5 @@
 // HTTP-level behaviour of the web adapter, driven through createWebApp with in-memory adapters.
+import { test } from 'node:test';
 import { identityService } from '../../src/app/application/identity.ts';
 import { assert, assertEquals } from '../support/assert.ts';
 import { fakePasswords, memoryUserRepository } from '../support/fakes.ts';
@@ -7,7 +8,7 @@ import { password, send, sessionCookie, signUp, sseEvents, testApp } from '../su
 const publicIds = (html: string) =>
   [...html.matchAll(/\/tasks\/([^/']+)\/toggle/g)].map((m) => m[1]);
 
-Deno.test('cross-origin form POSTs are rejected before any handler runs', async () => {
+test('cross-origin form POSTs are rejected before any handler runs', async () => {
   const app = testApp();
   const cookie = await signUp(app);
   const response = await send(app, '/tasks', {
@@ -19,7 +20,7 @@ Deno.test('cross-origin form POSTs are rejected before any handler runs', async 
   assert(!(await (await send(app, '/tasks', { cookie })).text()).includes('Injected'), 'no task');
 });
 
-Deno.test('responses carry the central security headers', async () => {
+test('responses carry the central security headers', async () => {
   const response = await testApp().request('/login');
   const csp = response.headers.get('Content-Security-Policy') ?? '';
   assert(csp.includes("script-src 'self' 'unsafe-eval'"), csp);
@@ -28,7 +29,7 @@ Deno.test('responses carry the central security headers', async () => {
   assert(response.headers.get('X-Request-ID'), 'request id is echoed');
 });
 
-Deno.test('unexpected errors become a generic 500 without leaking details', async () => {
+test('unexpected errors become a generic 500 without leaking details', async () => {
   const app = testApp({ ready: () => Promise.reject(new Error('secret detail')) });
   const logged: string[] = [];
   const original = console.error;
@@ -43,13 +44,13 @@ Deno.test('unexpected errors become a generic 500 without leaking details', asyn
   assert(logged.some((line) => line.includes('secret detail')), 'details are logged');
 });
 
-Deno.test('signed-out visitors are sent to the login page', async () => {
+test('signed-out visitors are sent to the login page', async () => {
   const response = await testApp().request('/tasks');
   assertEquals(response.status, 302);
   assertEquals(response.headers.get('Location'), '/login');
 });
 
-Deno.test('registration issues an HttpOnly, SameSite=Lax session cookie', async () => {
+test('registration issues an HttpOnly, SameSite=Lax session cookie', async () => {
   const app = testApp();
   const response = await send(app, '/register', {
     fields: { email: ' Person@Example.TEST ', password },
@@ -61,7 +62,7 @@ Deno.test('registration issues an HttpOnly, SameSite=Lax session cookie', async 
   assert(page.includes('person@example.test'), 'signed in as the normalised email');
 });
 
-Deno.test('registration rejects invalid input and duplicate emails', async () => {
+test('registration rejects invalid input and duplicate emails', async () => {
   const app = testApp();
   const invalid = await send(app, '/register', { fields: { email: 'nope', password } });
   assert((await invalid.text()).includes('Enter a valid email address.'), 'invalid email');
@@ -75,7 +76,7 @@ Deno.test('registration rejects invalid input and duplicate emails', async () =>
   assert((await duplicate.text()).includes('Unable to create that account.'), 'duplicate');
 });
 
-Deno.test('a database failure during registration is a generic 500, not a taken email', async () => {
+test('a database failure during registration is a generic 500, not a taken email', async () => {
   const users = {
     ...memoryUserRepository(),
     create: () => Promise.reject(new Error('connection reset')),
@@ -97,7 +98,7 @@ Deno.test('a database failure during registration is a generic 500, not a taken 
   assert(logged.some((line) => line.includes('connection reset')), 'details are logged');
 });
 
-Deno.test('login failures do not reveal whether the email exists', async () => {
+test('login failures do not reveal whether the email exists', async () => {
   const app = testApp();
   await signUp(app);
   const wrong = await send(app, '/login', {
@@ -113,21 +114,21 @@ Deno.test('login failures do not reveal whether the email exists', async () => {
   assert(sessionCookie(ok), 'session issued');
 });
 
-Deno.test('a tampered session cookie is ignored', async () => {
+test('a tampered session cookie is ignored', async () => {
   const app = testApp();
   const cookie = await signUp(app);
   const tampered = cookie.replace(/.$/, (last) => last === 'A' ? 'B' : 'A');
   assertEquals((await send(app, '/tasks', { cookie: tampered })).status, 302);
 });
 
-Deno.test('logout clears the session cookie', async () => {
+test('logout clears the session cookie', async () => {
   const app = testApp();
   const response = await send(app, '/logout', { fields: {}, cookie: await signUp(app) });
   assertEquals(response.status, 303);
   assert(/app_session=;.*Max-Age=0/.test(response.headers.get('Set-Cookie') ?? ''), 'cleared');
 });
 
-Deno.test('task commands answer with one finite SSE fat morph of #app', async () => {
+test('task commands answer with one finite SSE fat morph of #app', async () => {
   const app = testApp();
   const cookie = await signUp(app);
   const added = await send(app, '/tasks', {
@@ -153,7 +154,7 @@ Deno.test('task commands answer with one finite SSE fat morph of #app', async ()
   assert(deleted.includes('No tasks yet.'), 'task removed');
 });
 
-Deno.test('editing replaces only the editor row until the save succeeds', async () => {
+test('editing replaces only the editor row until the save succeeds', async () => {
   const app = testApp();
   const cookie = await signUp(app);
   const [id] = publicIds(
@@ -184,7 +185,7 @@ Deno.test('editing replaces only the editor row until the save succeeds', async 
   assert(cancelled.includes('mode replace') && cancelled.includes('hidden'), cancelled);
 });
 
-Deno.test("users cannot read or change each other's tasks", async () => {
+test("users cannot read or change each other's tasks", async () => {
   const app = testApp();
   const owner = await signUp(app, 'owner@example.test');
   const [id] = publicIds(
@@ -203,7 +204,7 @@ Deno.test("users cannot read or change each other's tasks", async () => {
   assert(page.includes('<strong>Private</strong>'), 'owner task untouched');
 });
 
-Deno.test('changing the password revokes every older session', async () => {
+test('changing the password revokes every older session', async () => {
   const app = testApp();
   const cookie = await signUp(app);
   const wrong = await send(app, '/profile/password', {
@@ -224,7 +225,7 @@ Deno.test('changing the password revokes every older session', async () => {
   assertEquals(relogin.status, 303);
 });
 
-Deno.test('due dates are validated and overdue tasks are flagged as of today (UTC)', async () => {
+test('due dates are validated and overdue tasks are flagged as of today (UTC)', async () => {
   const app = testApp(); // its clock reads 2026-10-09
   const cookie = await signUp(app);
   const rejected = await (await send(app, '/tasks', {

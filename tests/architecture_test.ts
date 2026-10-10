@@ -1,4 +1,5 @@
 // The architecture lint plugin must catch violations; `deno lint` applies it to the real code.
+import { test } from 'node:test';
 import plugin, { architecturePlugin } from '../tools/architecture_lint.ts';
 import { assertEquals } from './support/assert.ts';
 
@@ -7,7 +8,7 @@ const lint = (file: string, source: string) =>
 const layers = 'architecture/layer-dependencies';
 const purity = 'architecture/pure-core';
 
-Deno.test('each layer may import only the layers inside it', () => {
+test('each layer may import only the layers inside it', () => {
   const cases: [string, string, string[]][] = [
     ['src/app/domain/task.ts', "import { ok } from './shared.ts';", []],
     ['src/app/domain/task.ts', "import { taskService } from '../application/tasks.ts';", [layers]],
@@ -24,7 +25,7 @@ Deno.test('each layer may import only the layers inside it', () => {
   }
 });
 
-Deno.test('type-only, re-exported and dynamic dependencies count too', () => {
+test('type-only, re-exported and dynamic dependencies count too', () => {
   const web = 'src/app/adapters/web/views/tasks.tsx';
   assertEquals(lint(web, "import type { Row } from '../../persistence/rows.ts';"), [layers]);
   assertEquals(lint(web, "export * from '../../persistence/rows.ts';"), [layers]);
@@ -34,13 +35,13 @@ Deno.test('type-only, re-exported and dynamic dependencies count too', () => {
   assertEquals(lint('src/app/application/x.ts', 'await import(name);'), [layers]);
 });
 
-Deno.test('only adapters and the composition root may use packages', () => {
+test('only adapters and the composition root may use packages', () => {
   assertEquals(lint('src/app/domain/task.ts', "import { Hono } from 'hono';"), [layers]);
   assertEquals(lint('src/app/application/x.ts', "import type { Sql } from 'postgres';"), [layers]);
   assertEquals(lint('src/app/adapters/web/app.tsx', "import { Hono } from 'hono';"), []);
 });
 
-Deno.test('absolute paths and file: URLs are classified like relative imports', () => {
+test('absolute paths and file: URLs are classified like relative imports', () => {
   const web = '/repo/src/app/adapters/web/app.tsx';
   const cases: [string, string, string[]][] = [
     [web, "import { s } from '/repo/src/app/adapters/web/session.ts';", []],
@@ -59,7 +60,7 @@ Deno.test('absolute paths and file: URLs are classified like relative imports', 
   }
 });
 
-Deno.test('npm:, jsr: and node: specifiers are external packages; remote URLs are rejected', () => {
+test('npm:, jsr: and node: specifiers are external packages; remote URLs are rejected', () => {
   const web = 'src/app/adapters/web/app.tsx';
   assertEquals(lint(web, "import postgres from 'npm:postgres@3';"), []);
   assertEquals(lint(web, "import { Hono } from 'jsr:@hono/hono@4';"), []);
@@ -70,7 +71,7 @@ Deno.test('npm:, jsr: and node: specifiers are external packages; remote URLs ar
   assertEquals(lint('src/app/main.tsx', "import x from 'http://example.test/x.ts';"), [layers]);
 });
 
-Deno.test('bare specifiers resolve through the import map', () => {
+test('bare specifiers resolve through the import map', () => {
   const mapped = architecturePlugin({
     hono: 'jsr:@hono/hono@4',
     bulma: 'npm:bulma@1',
@@ -104,7 +105,7 @@ Deno.test('bare specifiers resolve through the import map', () => {
   assertEquals(lint(web, "import x from 'not-in-deno-json';"), [layers]);
 });
 
-Deno.test('files must live in a known layer; tests and tools are not governed', () => {
+test('files must live in a known layer; tests and tools are not governed', () => {
   assertEquals(lint('src/app/utils/strings.ts', 'export const x = 1;'), [layers]);
   assertEquals(lint('src/app/helpers.ts', 'export const x = 1;'), [layers]);
   assertEquals(lint('src/app/config.ts', "import { x } from './adapters/web/app.tsx';"), []);
@@ -112,7 +113,7 @@ Deno.test('files must live in a known layer; tests and tools are not governed', 
   assertEquals(lint('tests/web/app_test.ts', "import { x } from '../../src/app/main.tsx';"), []);
 });
 
-Deno.test('the core is free of JSX, ambient I/O, time and randomness', () => {
+test('the core is free of JSX, ambient I/O, time and randomness', () => {
   const domain = 'src/app/domain/task.tsx';
   assertEquals(lint(domain, 'const view = <p>hi</p>;'), [purity]);
   assertEquals(lint(domain, 'const now = Date.now();'), [purity]);
@@ -124,7 +125,7 @@ Deno.test('the core is free of JSX, ambient I/O, time and randomness', () => {
   assertEquals(lint('src/app/adapters/web/session.ts', 'const now = Date.now();'), []);
 });
 
-Deno.test('the core may not reach the ambient globals by any spelling', () => {
+test('the core may not reach the ambient globals by any spelling', () => {
   const domain = 'src/app/domain/task.ts';
   const forbidden = [
     'globalThis.fetch(url);',
@@ -146,7 +147,7 @@ Deno.test('the core may not reach the ambient globals by any spelling', () => {
   }
 });
 
-Deno.test('the core may use local bindings, types and the deterministic parts of Date and Math', () => {
+test('the core may use local bindings, types and the deterministic parts of Date and Math', () => {
   const domain = 'src/app/domain/task.ts';
   const allowed = [
     'function load(fetch: () => Promise<string>) { return fetch(); }',
