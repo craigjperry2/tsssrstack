@@ -12,16 +12,19 @@ Datastar applies complete `#app` morphs returned in finite SSE responses for tas
 - Bulma CSS (npm, served by the app) and vendored Datastar assets; the browser makes no CDN
   requests.
 - Nginx reverse proxy at `http://localhost:8080`, with proxy buffering disabled for finite SSE
-  responses. The Node host process listens on port 8000 only so the local Nginx container can reach
-  it.
+  responses and rate limiting on login and registration. The Node process listens on
+  `127.0.0.1:8000` behind it.
 
 ## Run locally
 
 1. Copy `.env.example` to `.env` and set a real development `SESSION_SECRET`.
 2. Load that environment in your shell, then run `nix develop`.
-3. Start PostgreSQL and Nginx with `docker compose up -d`. On first start, the PostgreSQL container
-   runs `infra/postgres/dev-roles.sql`, which creates the development runtime login `app_web`. For a
-   database created some other way, run that file once with `psql`; it is idempotent.
+3. From the repository root, start PostgreSQL and Nginx with `process-compose up` (add `-D` to run
+   them in the background, and stop them with `process-compose down`). Both run natively from the
+   Nix shell and keep their state in `.data/`; delete `.data/postgres` for a fresh database. On first
+   start, `process-compose.yaml` creates the cluster and runs `infra/postgres/dev-roles.sql`, which
+   creates the development runtime login `app_web`. For a database created some other way, run that
+   file once with `psql`; it is idempotent.
 4. Run `pnpm install`, `pnpm migrate`, then `pnpm dev`. Migrations connect as the schema owner
    (`MIGRATION_DATABASE_URL`); the app connects as `app_web` (`DATABASE_URL`), which can only do
    what the `app_runtime` role is granted.
@@ -31,11 +34,13 @@ When `ENV=development`, the server seeds a convenience account on startup, `dev@
 `devdevdevdev`, unless that email already exists. The seed never runs in test or production
 environments and never overwrites an existing account's password.
 
-The Nix shell supplies Node, pnpm, Docker tooling, and PostgreSQL client utilities on NixOS and
-nix-darwin. `pnpm check`, `pnpm fmt:check`, `pnpm lint`, and `pnpm test` are the normal
-verification commands. `tsc` compiles the TypeScript to `dist/`, which Node runs under its
-permission model. Set `DATABASE_URL` to the runtime login on a migrated database to include the
-repository and schema tests; without it they are reported as skipped.
+The Nix shell supplies Node, pnpm, PostgreSQL, Nginx, and process-compose on NixOS and nix-darwin;
+no Docker is needed
+([ADR 0006](docs/adr/0006-replace-docker-compose-with-nix-and-process-compose.md)). `pnpm check`,
+`pnpm fmt:check`, `pnpm lint`, and `pnpm test` are the normal verification commands. `tsc` compiles
+the TypeScript to `dist/`, which Node runs under its permission model. Set `DATABASE_URL` to the
+runtime login on a migrated database to include the repository and schema tests; without it they
+are reported as skipped.
 
 ## Architecture
 

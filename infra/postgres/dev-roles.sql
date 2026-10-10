@@ -2,7 +2,7 @@
 -- password. Idempotent, and safe to run before or after the migrations: migration 003 grants
 -- app_runtime its privileges and reuses the role if it already exists.
 --
--- Used by .agents/setup, compose.yaml (/docker-entrypoint-initdb.d) and CI. In production an
+-- Used by .agents/setup, process-compose.yaml and CI. In production an
 -- operator creates their own login role with a real secret and runs: GRANT app_runtime TO <login>;
 DO $$
 BEGIN
