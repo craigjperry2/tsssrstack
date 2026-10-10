@@ -47,5 +47,10 @@ jobs:
             pnpm migrate'
       - run: nix develop -c pnpm test
       - run: nix develop -c pnpm audit
+      # The production package (docs/adr/0007). Fails when pnpm-lock.yaml changed but the pnpmDeps
+      # hash in infra/nixos/package.nix did not.
+      - name: Build the Nix package
+        if: runner.os == 'Linux'
+        run: nix build .#tsssrstack
       - name: Verify vendored assets match SHA256SUMS
         run: nix develop -c sh -c 'cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS'

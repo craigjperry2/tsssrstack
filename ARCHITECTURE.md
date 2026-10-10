@@ -98,6 +98,7 @@ migrations/                 ordered, checksummed SQL migrations: tables, domains
 infra/postgres/dev-roles.sql  development-only runtime login (app_web) for setup, process-compose and CI
 infra/nginx/nginx.conf      development reverse proxy: SSE without buffering, login rate limits
 process-compose.yaml        local PostgreSQL and Nginx, run natively from the Nix shell (ADR 0006)
+infra/nixos/                production: Nix package, NixOS module (Nginx, TLS, roles), VM test (ADR 0007)
 tests/                      domain/, application/, persistence/, security/, web/, architecture
 tools/architecture_lint.ts  oxlint plugin enforcing the dependency rule
 ```
@@ -309,6 +310,7 @@ Architecture decision records live in [`docs/adr/`](docs/adr):
 - [0004: PostgreSQL guards the invariants; the TypeScript domain explains them](docs/adr/0004-postgresql-guards-the-invariants.md)
 - [0005: Replace Deno with Node and pnpm](docs/adr/0005-replace-deno-with-node-and-pnpm.md)
 - [0006: Replace Docker Compose with Nix and process-compose](docs/adr/0006-replace-docker-compose-with-nix-and-process-compose.md)
+- [0007: Deploy to NixOS with a flake package and module](docs/adr/0007-deploy-to-nixos-with-a-flake-module.md)
 
 [`docs/plans/bootstrap_plan.md`](docs/plans/bootstrap_plan.md) is the plan the repository was
 bootstrapped from. It is kept for history; where it differs from this document, this document wins.
