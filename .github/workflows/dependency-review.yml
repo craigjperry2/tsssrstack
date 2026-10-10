@@ -5,7 +5,7 @@ on:
 permissions:
   contents: read
 jobs:
-  # Fails pull requests that add dependencies with known vulnerabilities (from deno.lock,
+  # Fails pull requests that add dependencies with known vulnerabilities (from pnpm-lock.yaml,
   # workflow actions and other manifests in the dependency graph).
   dependency-review:
     runs-on: ubuntu-latest

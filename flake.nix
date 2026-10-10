@@ -1,9 +1,9 @@
 {
-  description = "Deno server-rendered application starter";
+  description = "Node server-rendered application starter";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
   outputs = { self, nixpkgs }:
     let systems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" "x86_64-darwin" ];
     in { devShells = nixpkgs.lib.genAttrs systems (system:
       let pkgs = import nixpkgs { inherit system; };
-      in { default = pkgs.mkShell { packages = [ pkgs.deno pkgs.docker_29 pkgs.postgresql_17 ]; }; }); };
+      in { default = pkgs.mkShell { packages = [ pkgs.nodejs_26 pkgs.pnpm pkgs.docker_29 pkgs.postgresql_17 ]; }; }); };
 }

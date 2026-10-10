@@ -30,14 +30,14 @@ a composition root. Dependencies point inwards only. The full rule is in
   composition root.
 - Repositories keep their row types private and map rows to domain types. Owner scoping and
   atomicity are part of the port contracts and stay in SQL.
-- A `deno lint` plugin enforces the dependency rule and keeps the core free of JSX, I/O, time and
-  randomness.
+- A lint plugin (oxlint since ADR 0005) enforces the dependency rule and keeps the core free of
+  JSX, I/O, time and randomness.
 
 ## Consequences
 
 - Domain and application tests run without HTTP or PostgreSQL. The web tests run against in-memory
   ports, and repository contracts are tested against a real database.
-- A misplaced import fails `deno lint` in CI instead of eroding the layers over time.
+- A misplaced import fails the lint step in CI instead of eroding the layers over time.
 - There are a few more files and names than a single-module app needs. A one-field change can touch
   every layer, which is the intended trade.
 - Brands are erased at runtime. They prevent mistakes in TypeScript, not in data that arrives some

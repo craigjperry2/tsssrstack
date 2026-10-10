@@ -1,11 +1,16 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import type { Child, FC } from 'hono/jsx';
-import bulmaCss from 'bulma/css/bulma.min.css' with { type: 'text' };
 import bulma from 'bulma/package.json' with { type: 'json' };
 
-// Bulma comes from npm through deno.json, so Dependabot updates it and deno.lock pins its
-// integrity. The version in the URL lets the stylesheet be cached as immutable.
+// Bulma comes from npm through package.json, so Dependabot updates it and pnpm-lock.yaml pins its
+// integrity. It is read once, at startup. The version in the URL lets the stylesheet be cached as
+// immutable.
 export const bulmaHref = `/static/bulma-${bulma.version}.min.css`;
-export { bulmaCss };
+export const bulmaCss = readFileSync(
+  fileURLToPath(import.meta.resolve('bulma/css/bulma.min.css')),
+  'utf8',
+);
 
 export const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => (
   <html lang='en'>

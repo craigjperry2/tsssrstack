@@ -2,3 +2,5 @@
 .direnv/
 result
 .amp/portals/
+node_modules/
+dist/

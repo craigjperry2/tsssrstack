@@ -1,7 +1,7 @@
 import type { PasswordHasher } from '../../application/ports/password-hasher.ts';
 const encoder = new TextEncoder();
 const parameters = { name: 'Argon2id', memory: 65536, passes: 3, parallelism: 1 } as const;
-// WebCrypto Argon2 ("Modern Algorithms in WebCrypto"); Deno's lib types don't declare it yet.
+// WebCrypto Argon2 ("Modern Algorithms in WebCrypto"); @types/node doesn't declare it yet.
 type Argon2Params = Algorithm & {
   nonce: BufferSource;
   memory: number;
@@ -35,8 +35,9 @@ function parsePhc(value: string): { salt: Uint8Array; hash: Uint8Array } | undef
 }
 async function derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
   // 'raw-secret' is the format the spec defines for Argon2 keys; Node accepts only that one.
+  // @types/node does not declare it yet, hence the cast.
   const key = await crypto.subtle.importKey(
-    'raw-secret',
+    'raw-secret' as 'raw',
     encoder.encode(password),
     'Argon2id',
     false,

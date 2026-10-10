@@ -1,5 +1,6 @@
 // Composition root: reads configuration, builds the adapters, wires them together and starts the
 // server. Nothing imports this module.
+import { serve } from '@hono/node-server';
 import { loadConfig } from './config.ts';
 import { identityService } from './application/identity.ts';
 import type { Clock } from './application/ports/clock.ts';
@@ -41,4 +42,6 @@ const app = createWebApp({
   },
 });
 
-Deno.serve({ hostname: config.host, port: config.port }, app.fetch);
+serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
+  console.log(`Listening on http://${info.address}:${info.port}/`);
+});

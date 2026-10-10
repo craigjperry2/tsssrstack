@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Prepares a fresh Amp orb. Every tool (Deno, PostgreSQL, ...) comes from the Nix dev shell pinned by
-# flake.lock, the same environment CI and local development use via `nix develop`.
+# Prepares a fresh Amp orb. Every tool (Node, pnpm, PostgreSQL, ...) comes from the Nix dev shell
+# pinned by flake.lock, the same environment CI and local development use via `nix develop`.
 # Must stay idempotent and fast on a warm (snapshot-restored) filesystem.
 set -euo pipefail
 
@@ -108,13 +108,12 @@ migrate() {
   # Idempotent: creates the development runtime login (and app_runtime) only if missing.
   PGPASSWORD=app PGOPTIONS='-c client_min_messages=warning' psql -h 127.0.0.1 -U app -d app -X -q \
     -v ON_ERROR_STOP=1 -f infra/postgres/dev-roles.sql
-  MIGRATION_DATABASE_URL="$owner_url" deno task migrate
+  MIGRATION_DATABASE_URL="$owner_url" pnpm migrate
   stop_temporary_postgres
 }
 
-cache_deno_deps() {
-  deno install
-  deno cache src/app/main.tsx src/app/adapters/persistence/migrate.ts $(find tests -name '*.ts' -o -name '*.tsx')
+install_node_deps() {
+  pnpm install --frozen-lockfile
 }
 
 create_env() {
@@ -137,7 +136,7 @@ create_env() {
 write_agent_notes() {
   write_block "$HOME/.config/amp/AGENTS.md" '<!-- >>> tsssrstack orb notes >>> -->' \
     '<!-- <<< tsssrstack orb notes <<< -->' "# tsssrstack orb notes
-- Deno, PostgreSQL and psql come from the Nix dev shell pinned by flake.lock. Amp's own shell, orb
+- Node, pnpm, PostgreSQL and psql come from the Nix dev shell pinned by flake.lock. Amp's own shell, orb
   services and terminals load it automatically (hook in ~/.bash_profile, see .agents/dev-env.sh).
   \`nix develop -c <cmd>\` works too, the same way CI runs checks.
 - There is no Docker daemon: \`docker compose\` and nginx are not used in orbs.
@@ -145,7 +144,7 @@ write_agent_notes() {
   starts it; \`.agents/setup\` creates the dev roles (infra/postgres/dev-roles.sql) and migrates.
 - The app and tests connect as the least-privilege runtime login: DATABASE_URL=${runtime_url}
   (app_web, a member of app_runtime). Migrations run as the owner:
-  MIGRATION_DATABASE_URL=${owner_url} deno task migrate
+  MIGRATION_DATABASE_URL=${owner_url} pnpm migrate
 - Run the app with \`amp orb services ensure\` (service \`app\` in .amp/services.yaml). It sets
   APP_ORIGIN to the portal origin so Hono's CSRF Origin check passes."
 }
@@ -160,11 +159,12 @@ set +u
 # shellcheck source=.agents/dev-env.sh
 source .agents/dev-env.sh
 set -u
-deno --version | head -n1
+node --version
+echo "pnpm $(pnpm --version)"
 postgres --version
 echo "    load nix dev shell took $((SECONDS - start))s"
 
-step "cache deno dependencies" cache_deno_deps
+step "install node dependencies" install_node_deps
 step "initialise postgresql cluster" init_postgres
 step "install postgresql systemd unit" install_postgres_unit
 step "run migrations" migrate

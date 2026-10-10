@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { csrf } from 'hono/csrf';
-import { serveStatic } from 'hono/deno';
+import { serveStatic } from '@hono/node-server/serve-static';
 import type { WebDeps, WebEnv } from './context.tsx';
 import { handleError } from './errors.ts';
 import { requestId, securityHeaders } from './middleware.ts';
@@ -28,8 +28,15 @@ export function createWebApp(deps: WebDeps): Hono<WebEnv> {
     c.header('Cache-Control', 'public, max-age=31536000, immutable');
     return c.body(bulmaCss, 200, { 'Content-Type': 'text/css; charset=utf-8' });
   });
-  // serveStatic joins root with the full request path, which already starts with /static.
-  app.use('/static/*', serveStatic({ root: './src/app' }));
+  // The root is the static directory itself, the only one the process may read, so the /static
+  // prefix comes off the request path before serveStatic joins the two.
+  app.use(
+    '/static/*',
+    serveStatic({
+      root: './src/app/static',
+      rewriteRequestPath: (path) => path.slice('/static'.length),
+    }),
+  );
 
   app.get('/', (c) => c.redirect(c.get('user') ? '/tasks' : '/login'));
   app.get('/healthz', (c) => c.text('ok'));

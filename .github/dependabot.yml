@@ -5,14 +5,14 @@ updates:
     schedule: { interval: weekly }
     groups:
       actions: { patterns: ['*'] }
-  # deno.json imports (JSR and npm). Datastar is vendored because it is not on npm or JSR; the
+  # package.json and pnpm-lock.yaml. Datastar is vendored because it is not on npm or JSR; the
   # "Datastar update" workflow covers it.
-  - package-ecosystem: deno
+  - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }
     # Skip releases younger than a week, so a compromised publish is likely caught first.
     cooldown: { default-days: 7 }
-  # flake.lock inputs. Bumping nixpkgs updates the Deno and PostgreSQL used by CI and orbs.
+  # flake.lock inputs. Bumping nixpkgs updates the Node, pnpm and PostgreSQL used by CI and orbs.
   - package-ecosystem: nix
     directory: /
     schedule: { interval: weekly }

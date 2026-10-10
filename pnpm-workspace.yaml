@@ -1,0 +1,19 @@
+# pnpm settings for this single-package repository. Several restate pnpm 12 defaults so the
+# supply-chain policy is visible in one place and survives a change of defaults.
+
+# Install only versions published at least 7 days ago (in minutes), transitive ones included, so a
+# compromised release is likely caught first. Matches the Dependabot cooldown.
+minimumReleaseAge: 10080
+# Fail when a package's publishing trust drops, e.g. from trusted publishing to a plain token.
+trustPolicy: no-downgrade
+# Transitive dependencies must come from the registry, never from git or tarball URLs.
+blockExoticSubdeps: true
+# No dependency install scripts run; an unreviewed one fails the install. None is allowed today.
+strictDepBuilds: true
+# `pnpm run` refuses to start when node_modules does not match the lockfile, instead of
+# silently installing.
+verifyDepsBeforeRun: error
+# Refuse to run on a Node or pnpm older than package.json "engines".
+engineStrict: true
+# Pin exact versions in package.json, so every upgrade is an explicit, reviewable change.
+savePrefix: ''
