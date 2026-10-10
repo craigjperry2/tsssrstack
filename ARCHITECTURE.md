@@ -95,7 +95,9 @@ src/app/
   static/vendor/            vendored Datastar, checked against SHA256SUMS
 
 migrations/                 ordered, checksummed SQL migrations: tables, domains, triggers, grants
-infra/postgres/dev-roles.sql  development-only runtime login (app_web) for setup, compose and CI
+infra/postgres/dev-roles.sql  development-only runtime login (app_web) for setup, process-compose and CI
+infra/nginx/nginx.conf      development reverse proxy: SSE without buffering, login rate limits
+process-compose.yaml        local PostgreSQL and Nginx, run natively from the Nix shell (ADR 0006)
 tests/                      domain/, application/, persistence/, security/, web/, architecture
 tools/architecture_lint.ts  oxlint plugin enforcing the dependency rule
 ```
@@ -306,6 +308,7 @@ Architecture decision records live in [`docs/adr/`](docs/adr):
 - [0003: Due dates are calendar days, judged against today in UTC](docs/adr/0003-due-dates-use-utc-calendar-days.md)
 - [0004: PostgreSQL guards the invariants; the TypeScript domain explains them](docs/adr/0004-postgresql-guards-the-invariants.md)
 - [0005: Replace Deno with Node and pnpm](docs/adr/0005-replace-deno-with-node-and-pnpm.md)
+- [0006: Replace Docker Compose with Nix and process-compose](docs/adr/0006-replace-docker-compose-with-nix-and-process-compose.md)
 
 [`docs/plans/bootstrap_plan.md`](docs/plans/bootstrap_plan.md) is the plan the repository was
 bootstrapped from. It is kept for history; where it differs from this document, this document wins.

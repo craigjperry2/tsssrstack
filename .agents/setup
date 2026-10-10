@@ -139,7 +139,7 @@ write_agent_notes() {
 - Node, pnpm, PostgreSQL and psql come from the Nix dev shell pinned by flake.lock. Amp's own shell, orb
   services and terminals load it automatically (hook in ~/.bash_profile, see .agents/dev-env.sh).
   \`nix develop -c <cmd>\` works too, the same way CI runs checks.
-- There is no Docker daemon: \`docker compose\` and nginx are not used in orbs.
+- process-compose.yaml (local PostgreSQL and nginx) is not used in orbs.
 - PostgreSQL runs as the systemd unit \`${pg_unit}\` (data in ${pg_data}). \`.agents/resume\`
   starts it; \`.agents/setup\` creates the dev roles (infra/postgres/dev-roles.sql) and migrates.
 - The app and tests connect as the least-privilege runtime login: DATABASE_URL=${runtime_url}

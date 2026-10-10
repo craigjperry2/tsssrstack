@@ -1,0 +1,33 @@
+# Local development services, run natively from the Nix dev shell: `process-compose up`.
+# The app itself runs on the host with `pnpm dev`; Nginx proxies to it.
+version: '0.5'
+processes:
+  postgres:
+    # The first start creates the cluster in a scratch directory and moves it into place only once
+    # it is complete, so an interrupted start never leaves a half-initialised cluster. The
+    # temporary server listens on its socket alone, so nothing connects before the roles exist.
+    command: |
+      set -eu
+      pgdata="$PWD/.data/postgres"
+      if [ ! -f "$pgdata/PG_VERSION" ]; then
+        rm -rf "$pgdata.init" && mkdir -p "$(dirname "$pgdata")"
+        initdb -D "$pgdata.init" -U app --pwfile=<(echo app) --auth=scram-sha-256 -E UTF8 --no-locale >/dev/null
+        pg_ctl -D "$pgdata.init" -w -o "-c listen_addresses='' -k '$pgdata.init'" start
+        export PGPASSWORD=app PGHOST="$pgdata.init"
+        createdb -U app app
+        psql -U app -d app -X -q -v ON_ERROR_STOP=1 -f infra/postgres/dev-roles.sql
+        pg_ctl -D "$pgdata.init" -w stop
+        unset PGPASSWORD PGHOST
+        mv "$pgdata.init" "$pgdata"
+      fi
+      exec postgres -D "$pgdata" -c listen_addresses=127.0.0.1 -c port=5432 -k "$pgdata"
+    readiness_probe:
+      exec: { command: 'pg_isready -h 127.0.0.1 -p 5432 -U app -d app' }
+      period_seconds: 2
+      failure_threshold: 30
+    # SIGINT is PostgreSQL's fast shutdown; the default SIGTERM waits for `pnpm dev`'s connections.
+    shutdown: { signal: 2, timeout_seconds: 30 }
+  nginx:
+    command: |
+      mkdir -p .data/nginx
+      exec nginx -p "$PWD/.data/nginx/" -c "$PWD/infra/nginx/nginx.conf" -e stderr -g 'daemon off;'

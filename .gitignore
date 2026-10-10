@@ -4,3 +4,5 @@ result
 .amp/portals/
 node_modules/
 dist/
+.data/
+.process-compose.sock
