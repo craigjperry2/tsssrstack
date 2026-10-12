@@ -2,7 +2,7 @@
 
 | Asset               | Upstream                                   | Version / revision                                    | License |
 | ------------------- | ------------------------------------------ | ----------------------------------------------------- | ------- |
-| `datastar-1.0.2.js` | https://github.com/starfederation/datastar | `v1.0.2` (release tag), file `bundles/datastar.js`    | MIT     |
+| `datastar-1.0.4.js` | https://github.com/starfederation/datastar | `v1.0.4` (release tag), file `bundles/datastar.js`    | MIT     |
 
 Files are byte-identical to upstream: oxfmt and oxlint exclude this directory, and CI verifies every
 file against `SHA256SUMS`. Re-vendoring requires updating this table and `SHA256SUMS`.
