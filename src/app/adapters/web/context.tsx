@@ -12,14 +12,20 @@ export type WebDeps = Readonly<{
   tasks: TaskService;
   session: SessionSettings;
   appOrigin: string;
+  // The application version shown in every page's footer, e.g. `0.1.0 (1f4486b)`.
+  version: string;
   ready(): Promise<boolean>;
 }>;
 
-export type WebEnv = { Variables: { user?: Principal; requestId: string } };
+export type WebEnv = { Variables: { user?: Principal; requestId: string; version: string } };
 export type AppContext = Context<WebEnv>;
 
 export const page = (c: AppContext, title: string, body: Child) =>
-  c.html(<Layout title={title}>{body}</Layout>);
+  c.html(
+    <Layout title={title} version={c.get('version')}>
+      {body}
+    </Layout>,
+  );
 
 // Form fields as strings; file parts are ignored.
 export async function form(c: AppContext): Promise<Record<string, string>> {

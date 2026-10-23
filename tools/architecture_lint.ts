@@ -205,7 +205,9 @@ export function architecturePlugin(dependencies: Iterable<string>): Plugin {
                 }
               } else {
                 const to = layerOf(target.path);
-                if (!to || !allowed(from, to)) {
+                // Outside src/app/ (to === undefined) only the composition root may reach, e.g.
+                // for package.json.
+                if (to ? !allowed(from, to) : from !== 'composition') {
                   context.report({
                     node,
                     message:

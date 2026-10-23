@@ -14,6 +14,8 @@
   nodejs_26,
   nodejs-slim_26,
   version ? "0",
+  # The git commit shown in the page footer; null outside a git checkout.
+  commit ? null,
 }:
 let
   root = ../..;
@@ -79,6 +81,7 @@ stdenv.mkDerivation (finalAttrs: {
       cat >$out/bin/$name <<EOF
     #!${stdenv.shell}
     cd $app
+    ${lib.optionalString (commit != null) "export APP_COMMIT=${lib.escapeShellArg commit}"}
     exec ${nodejs-slim_26}/bin/node --permission$reads --allow-net $app/dist/$entry "\$@"
     EOF
       chmod +x $out/bin/$name

@@ -29,6 +29,18 @@ test('responses carry the central security headers', async () => {
   assert(response.headers.get('X-Request-ID'), 'request id is echoed');
 });
 
+test('every page footer shows the application version', async () => {
+  const app = testApp({ version: '9.8.7' });
+  const cookie = await signUp(app);
+  for (const html of [
+    await (await app.request('/login')).text(),
+    await (await send(app, '/tasks', { cookie })).text(),
+    await (await send(app, '/profile', { cookie })).text(),
+  ]) {
+    assert(/<footer[^>]*>.*Version 9\.8\.7.*<\/footer>/s.test(html), html);
+  }
+});
+
 test('unexpected errors become a generic 500 without leaking details', async () => {
   const app = testApp({ ready: () => Promise.reject(new Error('secret detail')) });
   const logged: string[] = [];

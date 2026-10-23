@@ -12,7 +12,11 @@ export const bulmaCss = readFileSync(
   'utf8',
 );
 
-export const Layout: FC<{ title: string; children: Child }> = ({ title, children }) => (
+export const Layout: FC<{ title: string; version: string; children: Child }> = ({
+  title,
+  version,
+  children,
+}) => (
   <html lang='en'>
     <head>
       <meta charSet='utf-8' />
@@ -20,10 +24,15 @@ export const Layout: FC<{ title: string; children: Child }> = ({ title, children
       <title>{title}</title>
       <link rel='stylesheet' href={bulmaHref} />
     </head>
-    <body>
+    {/* Bulma's full-height hero is a 100vh flex column, so the footer sits at the bottom of short
+        pages without a stylesheet of our own (the CSP allows no inline styles). */}
+    <body class='hero is-fullheight'>
       <main class='section'>
         <div class='container is-max-desktop'>{children}</div>
       </main>
+      <footer class='footer'>
+        <p class='content has-text-centered is-size-7'>Version {version}</p>
+      </footer>
       <script type='module' src='/static/vendor/datastar-1.0.4.js'></script>
     </body>
   </html>

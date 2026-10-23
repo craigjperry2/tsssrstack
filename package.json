@@ -1,5 +1,6 @@
 {
   "name": "tsssrstack",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,8 +9,8 @@
     "lint": "oxlint --deny-warnings",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "dev": "tsc && (tsc --watch --preserveWatchOutput & exec node --watch --permission --allow-child-process --allow-fs-read=dist --allow-fs-read=node_modules --allow-fs-read=src/app/static --allow-fs-read=src/app/adapters/persistence/sql --allow-net dist/src/app/main.js)",
-    "start": "tsc && exec node --permission --allow-fs-read=dist --allow-fs-read=node_modules --allow-fs-read=src/app/static --allow-fs-read=src/app/adapters/persistence/sql --allow-net dist/src/app/main.js",
+    "dev": "tsc && (tsc --watch --preserveWatchOutput & APP_COMMIT=$(git rev-parse --short HEAD 2>/dev/null) exec node --watch --permission --allow-child-process --allow-fs-read=dist --allow-fs-read=node_modules --allow-fs-read=src/app/static --allow-fs-read=src/app/adapters/persistence/sql --allow-net dist/src/app/main.js)",
+    "start": "tsc && APP_COMMIT=$(git rev-parse --short HEAD 2>/dev/null) exec node --permission --allow-fs-read=dist --allow-fs-read=node_modules --allow-fs-read=src/app/static --allow-fs-read=src/app/adapters/persistence/sql --allow-net dist/src/app/main.js",
     "migrate": "tsc && exec node --permission --allow-fs-read=dist --allow-fs-read=node_modules --allow-fs-read=migrations --allow-net dist/src/app/adapters/persistence/migrate.js",
     "test": "tsc && node --test --test-isolation=none --permission --allow-fs-read=. --allow-addons --allow-net 'dist/tests/**/*_test.js'"
   },
