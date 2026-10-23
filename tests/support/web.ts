@@ -15,6 +15,7 @@ export function testApp(overrides: Partial<WebDeps> = {}) {
     tasks: taskService({ tasks: memoryTaskRepository(), clock: fixedClock }),
     session: { secret: 'test-secret-that-is-at-least-32-bytes-long', secure: false },
     appOrigin: origin,
+    version: '1.2.3-test',
     ready: () => Promise.resolve(true),
     ...overrides,
   });

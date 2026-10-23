@@ -7,6 +7,8 @@ export type Config = Readonly<{
   host: string;
   port: number;
   logLevel: string;
+  // The git commit the server was built from, shown next to the version; absent outside a checkout.
+  commit?: string;
 }>;
 
 function required(name: string, errors: string[]): string {
@@ -45,5 +47,6 @@ export function loadConfig(): Config {
     host: process.env.HOST ?? '0.0.0.0',
     port,
     logLevel: process.env.LOG_LEVEL ?? 'info',
+    commit: process.env.APP_COMMIT?.trim() || undefined,
   };
 }

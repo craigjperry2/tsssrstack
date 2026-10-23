@@ -14,6 +14,10 @@ import { bulmaCss, bulmaHref } from './views/layout.tsx';
 // so no handler has to remember to opt in.
 export function createWebApp(deps: WebDeps): Hono<WebEnv> {
   const app = new Hono<WebEnv>();
+  app.use('*', async (c, next) => {
+    c.set('version', deps.version);
+    await next();
+  });
   app.use('*', requestId);
   app.use('*', securityHeaders);
   app.use('*', csrf({ origin: deps.appOrigin }));

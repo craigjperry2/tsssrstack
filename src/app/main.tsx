@@ -10,6 +10,7 @@ import { createSql } from './adapters/persistence/client.ts';
 import { taskRepository } from './adapters/persistence/task-repository.ts';
 import { userRepository } from './adapters/persistence/user-repository.ts';
 import { createWebApp } from './adapters/web/app.tsx';
+import packageJson from '../../package.json' with { type: 'json' };
 
 const config = loadConfig();
 const sql = createSql(config.databaseUrl);
@@ -32,6 +33,7 @@ const app = createWebApp({
   tasks,
   session: { secret: config.sessionSecret, secure: config.env === 'production' },
   appOrigin: config.appOrigin,
+  version: config.commit ? `${packageJson.version} (${config.commit})` : packageJson.version,
   ready: async () => {
     try {
       await sql`SELECT 1`;

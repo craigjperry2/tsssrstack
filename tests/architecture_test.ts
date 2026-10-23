@@ -46,6 +46,8 @@ expectLint('each layer may import only the layers inside it', [
   [web, "import { Db } from '../persistence/client.ts';", [layers]],
   ['src/app/adapters/persistence/client.ts', "import { c } from '../../config.ts';", [layers]],
   ['src/app/main.tsx', "import { createWebApp } from './adapters/web/app.tsx';", []],
+  ['src/app/main.tsx', "import pkg from '../../package.json' with { type: 'json' };", []],
+  [web, "import pkg from '../../../../package.json' with { type: 'json' };", [layers]],
 ]);
 
 const view = 'src/app/adapters/web/views/tasks.tsx';
