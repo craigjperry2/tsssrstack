@@ -6,7 +6,7 @@
         forAll = f: nixpkgs.lib.genAttrs systems (system: f (import nixpkgs { inherit system; }));
     in {
       devShells = forAll (pkgs: { default = pkgs.mkShell {
-        packages = [ pkgs.nodejs_26 pkgs.pnpm pkgs.postgresql_17 pkgs.nginx pkgs.process-compose ];
+        packages = [ pkgs.nodejs_26 pkgs.pnpm pkgs.postgresql_17 pkgs.nginx pkgs.process-compose pkgs.just ];
         # Serve process-compose's unauthenticated control API on a socket in the repository root
         # (run it from there) rather than on TCP port 8080, which Nginx serves the app on.
         PC_SOCKET_PATH = ".process-compose.sock";
