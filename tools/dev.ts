@@ -616,11 +616,12 @@ async function diagnose() {
   await status(false);
   const stack = loadStack();
   if (stack) {
-    const env = stackEnv(stack);
+    // Only values this tool sets, or a closed set, so nothing read from the environment is logged.
+    const envName = stackEnv(stack).ENV ?? 'development';
+    const known = ['development', 'test', 'production'].find((name) => name === envName);
     console.log('--- environment (secrets omitted) ---');
-    for (const key of ['ENV', 'HOST', 'PORT', 'APP_ORIGIN', 'LOG_LEVEL']) {
-      console.log(`${key}=${env[key] ?? ''}`);
-    }
+    console.log(`ENV=${known ?? '(not development, test or production)'}`);
+    console.log(`HOST=127.0.0.1\nPORT=${stack.port}\nAPP_ORIGIN=${appUrl(stack)}`);
     console.log(`database=${stack.database}`);
   }
   console.log(`--- app log (${APP_LOG}) ---\n${tail(APP_LOG)}`);
