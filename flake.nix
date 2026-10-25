@@ -15,7 +15,6 @@
       # with TLS, against a local PostgreSQL (infra/nixos, docs/adr/0007).
       packages = forAll (pkgs: rec {
         tsssrstack = pkgs.callPackage ./infra/nixos/package.nix {
-          version = self.shortRev or self.dirtyShortRev or "0";
           commit = self.shortRev or self.dirtyShortRev or null;
         };
         default = tsssrstack;

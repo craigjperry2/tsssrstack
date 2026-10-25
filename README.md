@@ -47,7 +47,15 @@ are reported as skipped.
 The flake exports the app as `packages.<system>.tsssrstack` and a NixOS module,
 `nixosModules.default`, which runs migrations as the schema owner, the app as `app_web`, and Nginx
 with a Let's Encrypt certificate in front ([ADR 0007](docs/adr/0007-deploy-to-nixos-with-a-flake-module.md)).
-Add this flake as an input to the host's flake, then:
+Add a release of this flake as an input to the host's flake, by its tag, so `nix flake update` on
+the host never moves to a newer release
+([ADR 0008](docs/adr/0008-release-by-tag-and-pin-hosts-to-it.md)):
+
+```nix
+inputs.tsssrstack.url = "github:craigjperry2/tsssrstack/v0.1.0";
+```
+
+Then:
 
 ```nix
 {
@@ -70,8 +78,16 @@ Add this flake as an input to the host's flake, then:
 }
 ```
 
-Deploy with `nix flake update tsssrstack` and `nixos-rebuild switch` in the host's flake.
 `nix build .#checks.x86_64-linux.nixos-module` boots the module in VMs and checks it end to end.
+
+### Releases
+
+To release, open a pull request that bumps `version` in `package.json`. After it merges and both
+`node` jobs pass on `main`, CI publishes GitHub release `v<version>` on that commit. The page
+footer shows the version and the commit, such as `Version 0.1.0 (f327f95)`.
+
+To deploy a release, change the tag in the host's input URL, run `nix flake lock` in the host's
+flake, and `nixos-rebuild switch`. Migrations run before the new version starts.
 
 ## Architecture
 

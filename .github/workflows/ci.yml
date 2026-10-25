@@ -54,3 +54,29 @@ jobs:
         run: nix build .#tsssrstack
       - name: Verify vendored assets match SHA256SUMS
         run: nix develop -c sh -c 'cd src/app/static/vendor && sha256sum --check --strict SHA256SUMS'
+
+  # Publishes release v<package.json version> once main passes both node jobs, unless it already
+  # exists (docs/adr/0008). Releasing means merging a version bump. Hosts pin the release tag.
+  release:
+    if: github.event_name == 'push'
+    needs: node
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Publish a release for a new package version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version package.json)
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "Release v$version already exists."
+            exit 0
+          fi
+          gh release create "v$version" --target "$GITHUB_SHA" --generate-notes

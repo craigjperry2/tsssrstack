@@ -311,6 +311,7 @@ Architecture decision records live in [`docs/adr/`](docs/adr):
 - [0005: Replace Deno with Node and pnpm](docs/adr/0005-replace-deno-with-node-and-pnpm.md)
 - [0006: Replace Docker Compose with Nix and process-compose](docs/adr/0006-replace-docker-compose-with-nix-and-process-compose.md)
 - [0007: Deploy to NixOS with a flake package and module](docs/adr/0007-deploy-to-nixos-with-a-flake-module.md)
+- [0008: Release by tag, and pin hosts to the tag](docs/adr/0008-release-by-tag-and-pin-hosts-to-it.md)
 
 [`docs/plans/bootstrap_plan.md`](docs/plans/bootstrap_plan.md) is the plan the repository was
 bootstrapped from. It is kept for history; where it differs from this document, this document wins.

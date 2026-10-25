@@ -13,7 +13,6 @@
   pnpm,
   nodejs_26,
   nodejs-slim_26,
-  version ? "0",
   # The git commit shown in the page footer; null outside a git checkout.
   commit ? null,
 }:
@@ -28,7 +27,8 @@ let
 in
 stdenv.mkDerivation (finalAttrs: {
   pname = "tsssrstack";
-  inherit version;
+  # The release version (docs/adr/0008), which the page footer also shows.
+  inherit (lib.importJSON (root + "/package.json")) version;
 
   src = lib.fileset.toSource {
     inherit root;
