@@ -303,6 +303,9 @@ push to `main` or try to bypass the ruleset.
 - If you rename the CI workflow job or change its matrix, update the required status checks in
   `.github/rulesets/main.json` and the live ruleset in the same change. Otherwise every pull
   request waits forever for a check that no longer exists.
+- Bumping `version` in `package.json` is a release: once merged and green on `main`, CI publishes
+  GitHub release `v<version>`, which hosts pin by tag (ADR 0008). Bump it only when asked to
+  release.
 - Never run `gh pr merge`; merging is a human task. Never force-push, hard-reset, force-clean, or
   forcibly delete branches or worktrees, and never delete remote branches.
 - After a human merges the pull request, run `just down` in the feature worktree, then from

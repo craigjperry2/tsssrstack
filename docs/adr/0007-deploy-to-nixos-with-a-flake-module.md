@@ -1,6 +1,7 @@
 # 0007: Deploy to NixOS with a flake package and module
 
-- Status: accepted
+- Status: accepted; the deployment step is amended by
+  [0008](0008-release-by-tag-and-pin-hosts-to-it.md)
 - Date: 2026-10-10
 
 ## Context
