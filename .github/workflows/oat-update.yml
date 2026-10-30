@@ -1,0 +1,73 @@
+name: Oat update
+# Oat is vendored rather than installed from npm, so Dependabot cannot see it. This opens a pull
+# request that re-vendors oat.min.css and oat.min.js from the @knadh/oat npm release whenever
+# upstream publishes a new version.
+on:
+  schedule:
+    - cron: '43 5 * * 1'
+  workflow_dispatch:
+concurrency:
+  group: oat-update
+permissions:
+  contents: read
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # push the update branch
+      pull-requests: write # open the pull request
+      actions: write # dispatch CI, which pull requests opened with GITHUB_TOKEN do not trigger
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Open a pull request for a new Oat release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          vendor=src/app/static/vendor
+          new=$(npm view @knadh/oat version)
+          # The version is upstream data: accept only a plain version before using it in paths.
+          if ! [[ $new =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Unexpected Oat version: $new" >&2
+            exit 1
+          fi
+          current=$(sed -nE 's/^[0-9a-f]{64}  oat-(.+)\.min\.css$/\1/p' "$vendor/SHA256SUMS")
+          if [[ $new == "$current" ]]; then
+            echo "Oat $current is up to date."
+            exit 0
+          fi
+          branch="deps/oat-$new"
+          if [[ -n $(gh pr list --head "$branch" --state open --json number --jq '.[].number') ]]; then
+            echo "A pull request for $branch is already open."
+            exit 0
+          fi
+
+          git switch -c "$branch"
+          # npm pack checks the tarball against the registry's integrity hash.
+          pack=$(mktemp -d)
+          npm pack "@knadh/oat@$new" --pack-destination "$pack" --silent >/dev/null
+          tar -xzf "$pack"/*.tgz -C "$pack" package/oat.min.css package/oat.min.js
+          old=${current//./\\.}
+          for ext in css js; do
+            cp "$pack/package/oat.min.$ext" "$vendor/oat-$new.min.$ext"
+            git rm -q "$vendor/oat-$current.min.$ext"
+            sum=$(cd "$vendor" && sha256sum "oat-$new.min.$ext")
+            sed -i "s/^[0-9a-f]\{64\}  oat-$old\.min\.$ext\$/$sum/" "$vendor/SHA256SUMS"
+          done
+          sed -i "/^| \`oat-/ s/$old/$new/g" "$vendor/PROVENANCE.md"
+          sed -i "s/oat-$old\.min\./oat-$new.min./g" src/app/adapters/web/views/layout.tsx
+          (cd "$vendor" && sha256sum --check --strict SHA256SUMS)
+
+          git add -A "$vendor" src/app/adapters/web/views/layout.tsx
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit -q -m "chore(deps): vendor Oat v$new"
+          gh auth setup-git
+          git push --force origin "$branch"
+          gh pr create --base main --head "$branch" \
+            --title "chore(deps): vendor Oat v$new" \
+            --body "Re-vendors \`oat.min.css\` and \`oat.min.js\` from [@knadh/oat $new](https://www.npmjs.com/package/@knadh/oat/v/$new) ([release notes](https://github.com/knadh/oat/releases/tag/v$new)), replacing $current. Review the release notes for breaking changes before merging."
+          gh workflow run ci.yml --ref "$branch"

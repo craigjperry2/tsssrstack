@@ -1,16 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import type { Child, FC } from 'hono/jsx';
-import bulma from 'bulma/package.json' with { type: 'json' };
-
-// Bulma comes from npm through package.json, so Dependabot updates it and pnpm-lock.yaml pins its
-// integrity. It is read once, at startup. The version in the URL lets the stylesheet be cached as
-// immutable.
-export const bulmaHref = `/static/bulma-${bulma.version}.min.css`;
-export const bulmaCss = readFileSync(
-  fileURLToPath(import.meta.resolve('bulma/css/bulma.min.css')),
-  'utf8',
-);
 
 export const Layout: FC<{ title: string; version: string; children: Child }> = ({
   title,
@@ -22,16 +10,14 @@ export const Layout: FC<{ title: string; version: string; children: Child }> = (
       <meta charSet='utf-8' />
       <meta name='viewport' content='width=device-width, initial-scale=1' />
       <title>{title}</title>
-      <link rel='stylesheet' href={bulmaHref} />
+      <link rel='stylesheet' href='/static/vendor/oat-1.0.0.min.css' />
+      <link rel='stylesheet' href='/static/app.css' />
+      <script src='/static/vendor/oat-1.0.0.min.js' defer></script>
     </head>
-    {/* Bulma's full-height hero is a 100vh flex column, so the footer sits at the bottom of short
-        pages without a stylesheet of our own (the CSP allows no inline styles). */}
-    <body class='hero is-fullheight'>
-      <main class='section'>
-        <div class='container is-max-desktop'>{children}</div>
-      </main>
-      <footer class='footer'>
-        <p class='content has-text-centered is-size-7'>Version {version}</p>
+    <body>
+      <main class='container'>{children}</main>
+      <footer class='container align-center text-light'>
+        <small>Version {version}</small>
       </footer>
       <script type='module' src='/static/vendor/datastar-1.0.4.js'></script>
     </body>

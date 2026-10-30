@@ -9,8 +9,7 @@ Datastar applies complete `#app` morphs returned in finite SSE responses for tas
 - Account registration, login/logout, password change, signed stateless sessions, central CSRF
   protection, CSP, and user-scoped task CRUD.
 - PostgreSQL migrations and parameterised `.sql` files used through postgres.js.
-- Bulma CSS (npm, served by the app) and vendored Datastar assets; the browser makes no CDN
-  requests.
+- Vendored Oat UI and Datastar assets, served by the app; the browser makes no CDN requests.
 - Nginx reverse proxy at `http://localhost:8080`, with proxy buffering disabled for finite SSE
   responses and rate limiting on login and registration. The Node process listens on
   `127.0.0.1:8000` behind it.

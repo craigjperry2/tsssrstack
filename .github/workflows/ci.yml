@@ -4,8 +4,8 @@ on:
     branches: [main]
   push:
     branches: [main]
-  # The Datastar update workflow dispatches CI on the pull requests it opens, because pull requests
-  # created with GITHUB_TOKEN do not trigger pull_request workflows.
+  # The Datastar and Oat update workflows dispatch CI on the pull requests they open, because
+  # pull requests created with GITHUB_TOKEN do not trigger pull_request workflows.
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.ref }}

@@ -1,0 +1,20 @@
+/* The page layout Oat leaves to the application. Oat's rules sit in cascade layers, so these
+   unlayered rules and variable overrides win without raising specificity. */
+:root {
+  --container-max: 960px;
+}
+
+/* A full-height column keeps the footer at the bottom of short pages. */
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+body > main {
+  flex: 1;
+}
+
+body > footer {
+  padding-block: var(--space-8);
+}

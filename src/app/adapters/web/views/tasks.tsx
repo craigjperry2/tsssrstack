@@ -8,7 +8,7 @@ type Errors = Record<string, string>;
 
 const ErrorSummary: FC<{ errors: Errors }> = ({ errors }) =>
   Object.keys(errors).length > 0 ? (
-    <div class='notification is-danger is-light content' aria-live='polite'>
+    <div role='alert' data-variant='danger' class='vstack gap-1 mb-4' aria-live='polite'>
       <strong>Please correct the following:</strong>
       <ul>
         {Object.values(errors).map((error, index) => (
@@ -25,56 +25,42 @@ const TaskFields: FC<{ prefix: string; values: Values; errors: Errors; bind?: bo
   bind,
 }) => (
   <>
-    <div class='field'>
-      <label class='label' htmlFor={`${prefix}-title`}>
-        Title
-      </label>
-      <div class='control'>
-        <input
-          class={errors.title ? 'input is-danger' : 'input'}
-          id={`${prefix}-title`}
-          name='title'
-          data-bind={bind ? 'title' : undefined}
-          value={values.title ?? ''}
-          aria-invalid={errors.title ? true : undefined}
-        />
-      </div>
+    {/* Oat styles the controls themselves; aria-invalid gives an input its error border. */}
+    <div data-field>
+      <label htmlFor={`${prefix}-title`}>Title</label>
+      <input
+        id={`${prefix}-title`}
+        name='title'
+        data-bind={bind ? 'title' : undefined}
+        value={values.title ?? ''}
+        aria-invalid={errors.title ? true : undefined}
+      />
     </div>
-    <div class='field'>
-      <label class='label' htmlFor={`${prefix}-description`}>
-        Description
-      </label>
-      <div class='control'>
-        <textarea
-          class={errors.description ? 'textarea is-danger' : 'textarea'}
-          id={`${prefix}-description`}
-          name='description'
-          data-bind={bind ? 'description' : undefined}
-          aria-invalid={errors.description ? true : undefined}
-        >
-          {values.description ?? ''}
-        </textarea>
-      </div>
+    <div data-field>
+      <label htmlFor={`${prefix}-description`}>Description</label>
+      <textarea
+        id={`${prefix}-description`}
+        name='description'
+        data-bind={bind ? 'description' : undefined}
+        aria-invalid={errors.description ? true : undefined}
+      >
+        {values.description ?? ''}
+      </textarea>
     </div>
-    <div class='field'>
-      <label class='label' htmlFor={`${prefix}-due-date`}>
-        Due date
-      </label>
-      <div class='control'>
-        <input
-          class={errors.dueDate ? 'input is-danger' : 'input'}
-          type='date'
-          id={`${prefix}-due-date`}
-          name='dueDate'
-          data-bind={bind ? 'dueDate' : undefined}
-          value={values.dueDate ?? ''}
-          aria-invalid={errors.dueDate ? true : undefined}
-          aria-describedby={`${prefix}-due-date-help`}
-        />
-      </div>
-      <p class='help' id={`${prefix}-due-date-help`}>
+    <div data-field>
+      <label htmlFor={`${prefix}-due-date`}>Due date</label>
+      <input
+        type='date'
+        id={`${prefix}-due-date`}
+        name='dueDate'
+        data-bind={bind ? 'dueDate' : undefined}
+        value={values.dueDate ?? ''}
+        aria-invalid={errors.dueDate ? true : undefined}
+        aria-describedby={`${prefix}-due-date-help`}
+      />
+      <small data-hint id={`${prefix}-due-date-help`}>
         Optional. The task is overdue from the following day, by UTC date.
-      </p>
+      </small>
     </div>
   </>
 );
@@ -83,7 +69,7 @@ const TaskRow: FC<{ task: ListedTask }> = ({ task }) => {
   const url = `/tasks/${id(task.id)}`;
   return (
     <tr id={`task-${id(task.id)}`}>
-      <td class='is-narrow is-vcentered'>
+      <td>
         <form data-on:submit__prevent={postExpr(`${url}/toggle`)}>
           <input
             type='checkbox'
@@ -93,12 +79,12 @@ const TaskRow: FC<{ task: ListedTask }> = ({ task }) => {
           />
         </form>
       </td>
-      <td class='is-vcentered'>
+      <td>
         {task.completed ? <s>{task.title}</s> : <strong>{task.title}</strong>}
         {task.dueDate && (
           <>
             {' '}
-            <span class={task.overdue ? 'tag is-danger is-light' : 'tag is-light'}>
+            <span class='badge' data-variant={task.overdue ? 'danger' : 'secondary'}>
               {task.overdue ? `Overdue · due ${task.dueDate}` : `Due ${task.dueDate}`}
             </span>
           </>
@@ -106,19 +92,16 @@ const TaskRow: FC<{ task: ListedTask }> = ({ task }) => {
         {task.description && (
           <>
             <br />
-            <small class='has-text-grey'>{task.description}</small>
+            <small class='text-light'>{task.description}</small>
           </>
         )}
       </td>
-      <td class='is-narrow is-vcentered'>
-        {/* One form holds both buttons so Bulma's .buttons group lays them out on one line. */}
-        <form
-          class='buttons are-small is-flex-wrap-nowrap'
-          data-on:submit__prevent={postExpr(`${url}/delete`)}
-        >
+      <td>
+        {/* One form holds both buttons: one line when there is room, stacked on narrow screens. */}
+        <form class='hstack gap-2' data-on:submit__prevent={postExpr(`${url}/delete`)}>
           <button
             type='button'
-            class='button'
+            class='outline small'
             aria-label={`Edit ${task.title}`}
             aria-controls={editorId(task.id)}
             data-on:click={getExpr(`${url}/edit`)}
@@ -127,7 +110,8 @@ const TaskRow: FC<{ task: ListedTask }> = ({ task }) => {
           </button>
           <button
             type='submit'
-            class='button is-danger is-outlined'
+            class='outline small'
+            data-variant='danger'
             aria-label={`Delete ${task.title}`}
           >
             Delete
@@ -168,11 +152,9 @@ export const TaskEditor: FC<{ task: Task; values?: Values; errors?: Errors }> = 
             }
             errors={errors}
           />
-          <div class='buttons'>
-            <button type='submit' class='button is-primary'>
-              Save
-            </button>
-            <button type='button' class='button' data-on:click={getExpr(url)}>
+          <div class='hstack'>
+            <button type='submit'>Save</button>
+            <button type='button' class='outline' data-on:click={getExpr(url)}>
               Cancel
             </button>
           </div>
@@ -189,50 +171,45 @@ export const App: FC<{
   errors?: Errors;
 }> = ({ email, items, values = {}, errors = {} }) => (
   <div id='app'>
-    <nav class='level'>
-      <div class='level-left'>
-        <strong class='level-item'>Tasks</strong>
-      </div>
-      <form class='level-right' method='post' action='/logout'>
-        <span class='level-item has-text-grey'>{email}</span>
-        <a class='level-item' href='/profile'>
-          Profile
-        </a>
-        <div class='level-item'>
-          <button type='submit' class='button is-small'>
-            Log out
-          </button>
-        </div>
+    <nav class='flex justify-between items-center'>
+      <strong>Tasks</strong>
+      <form class='hstack' method='post' action='/logout'>
+        <span class='text-light'>{email}</span>
+        <a href='/profile'>Profile</a>
+        <button type='submit' class='outline small'>
+          Log out
+        </button>
       </form>
     </nav>
-    <h1 class='title'>Your tasks</h1>
-    <form class='block' data-on:submit__prevent={postExpr('/tasks')}>
+    <h1>Your tasks</h1>
+    <form class='mb-6' data-on:submit__prevent={postExpr('/tasks')}>
       <ErrorSummary errors={errors} />
       <TaskFields prefix='task' values={values} errors={errors} bind />
-      <button type='submit' class='button is-primary'>
-        Add task
-      </button>
+      <button type='submit'>Add task</button>
     </form>
     {items.length === 0 ? (
       <p>No tasks yet. Add one above.</p>
     ) : (
-      <table class='table is-fullwidth is-hoverable' aria-label='Task list'>
-        <thead>
-          <tr>
-            <th scope='col'>Done</th>
-            <th scope='col'>Task</th>
-            <th scope='col'>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((task) => (
-            <Fragment key={String(task.id)}>
-              <TaskRow task={task} />
-              <ClosedEditor taskId={task.id} />
-            </Fragment>
-          ))}
-        </tbody>
-      </table>
+      // Oat's .table wrapper scrolls the table sideways on narrow screens.
+      <div class='table'>
+        <table aria-label='Task list'>
+          <thead>
+            <tr>
+              <th scope='col'>Done</th>
+              <th scope='col'>Task</th>
+              <th scope='col'>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.map((task) => (
+              <Fragment key={String(task.id)}>
+                <TaskRow task={task} />
+                <ClosedEditor taskId={task.id} />
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
     )}
   </div>
 );

@@ -15,7 +15,7 @@ choices are recorded as [decisions](#decisions).
   Hono JSX, and CSRF, CSP and sessions are enforced centrally.
 - **PostgreSQL guards the invariants.** Domains, triggers and grants refuse invalid states whatever
   writes the data; the TypeScript domain checks first and explains the problem.
-- **Few dependencies.** Hono, Datastar, postgres.js, plus Bulma and Sqids. There is no ORM, no DI
+- **Few dependencies.** Hono, Datastar, postgres.js, plus Oat UI and Sqids. There is no ORM, no DI
   container and no Node runtime.
 
 ## Shape
@@ -92,7 +92,8 @@ src/app/
     security/
       password.ts           implements PasswordHasher with Argon2id
 
-  static/vendor/            vendored Datastar, checked against SHA256SUMS
+  static/app.css            page layout Oat leaves to the application
+  static/vendor/            vendored Datastar and Oat UI, checked against SHA256SUMS
 
 migrations/                 ordered, checksummed SQL migrations: tables, domains, triggers, grants
 infra/postgres/dev-roles.sql  development-only runtime login (app_web) for setup, process-compose and CI

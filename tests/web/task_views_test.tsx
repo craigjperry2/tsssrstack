@@ -77,7 +77,7 @@ test('add form keeps values and shows errors after validation failure', async ()
   assert(html.includes('<li>X</li>'), 'errors are shown');
 });
 
-test('due dates render as tags, with overdue tasks flagged', async () => {
+test('due dates render as badges, with overdue tasks flagged', async () => {
   const html = await render({
     items: [
       { ...items[1], id: 3, dueDate: '2026-10-01' as CalendarDate, overdue: true },
@@ -85,10 +85,10 @@ test('due dates render as tags, with overdue tasks flagged', async () => {
     ],
   });
   assert(
-    html.includes('<span class="tag is-danger is-light">Overdue · due 2026-10-01</span>'),
+    html.includes('<span class="badge" data-variant="danger">Overdue · due 2026-10-01</span>'),
     html,
   );
-  assert(html.includes('<span class="tag is-light">Due 2026-12-25</span>'), html);
+  assert(html.includes('<span class="badge" data-variant="secondary">Due 2026-12-25</span>'), html);
   assert(
     count(html, /type="date" id="task-due-date" name="dueDate" data-bind="dueDate"/g) === 1,
     html,
