@@ -27,7 +27,10 @@ jobs:
         run: |
           set -euo pipefail
           vendor=src/app/static/vendor
-          tag=$(gh api repos/starfederation/datastar/releases/latest --jq .tag_name)
+          release=$(gh api repos/starfederation/datastar/releases/latest \
+            --jq '"\(.tag_name) \(.published_at)"')
+          tag=${release% *}
+          published_at=${release#* }
           new=${tag#v}
           # The tag is upstream data: accept only a plain version before using it in paths.
           if ! [[ $new =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -45,6 +48,9 @@ jobs:
             exit 0
           fi
 
+          # date fails on anything that is not a timestamp, so upstream data cannot reach the body.
+          released=$(date -u -d "$published_at" +%F)
+          age=$(( ($(date -u +%s) - $(date -u -d "$published_at" +%s)) / 86400 ))
           git switch -c "$branch"
           curl -fsSL "https://raw.githubusercontent.com/starfederation/datastar/$tag/bundles/datastar.js" \
             -o "$vendor/datastar-$new.js"
@@ -64,5 +70,5 @@ jobs:
           git push --force origin "$branch"
           gh pr create --base main --head "$branch" \
             --title "chore(deps): vendor Datastar $tag" \
-            --body "Re-vendors \`bundles/datastar.js\` from Datastar [$tag](https://github.com/starfederation/datastar/releases/tag/$tag), replacing $current. Review the release notes for breaking changes before merging."
+            --body "Re-vendors \`bundles/datastar.js\` from Datastar [$tag](https://github.com/starfederation/datastar/releases/tag/$tag) which is $age days old ($released), replacing $current. Review the release notes for breaking changes before merging."
           gh workflow run ci.yml --ref "$branch"

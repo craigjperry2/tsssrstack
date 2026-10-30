@@ -45,6 +45,10 @@ jobs:
             exit 0
           fi
 
+          # The npm publish time; date fails on anything that is not a timestamp (including null).
+          published_at=$(npm view @knadh/oat time --json | jq -r --arg v "$new" '.[$v]')
+          released=$(date -u -d "$published_at" +%F)
+          age=$(( ($(date -u +%s) - $(date -u -d "$published_at" +%s)) / 86400 ))
           git switch -c "$branch"
           # npm pack checks the tarball against the registry's integrity hash.
           pack=$(mktemp -d)
@@ -69,5 +73,5 @@ jobs:
           git push --force origin "$branch"
           gh pr create --base main --head "$branch" \
             --title "chore(deps): vendor Oat v$new" \
-            --body "Re-vendors \`oat.min.css\` and \`oat.min.js\` from [@knadh/oat $new](https://www.npmjs.com/package/@knadh/oat/v/$new) ([release notes](https://github.com/knadh/oat/releases/tag/v$new)), replacing $current. Review the release notes for breaking changes before merging."
+            --body "Re-vendors \`oat.min.css\` and \`oat.min.js\` from [@knadh/oat $new](https://www.npmjs.com/package/@knadh/oat/v/$new) ([release notes](https://github.com/knadh/oat/releases/tag/v$new)) which is $age days old ($released), replacing $current. Review the release notes for breaking changes before merging."
           gh workflow run ci.yml --ref "$branch"
