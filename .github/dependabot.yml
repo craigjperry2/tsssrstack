@@ -5,8 +5,8 @@ updates:
     schedule: { interval: weekly }
     groups:
       actions: { patterns: ['*'] }
-  # package.json and pnpm-lock.yaml. Datastar is vendored because it is not on npm or JSR; the
-  # "Datastar update" workflow covers it.
+  # package.json and pnpm-lock.yaml. The browser assets in src/app/static/vendor are not npm
+  # dependencies; the "Datastar update" and "Oat update" workflows keep them current.
   - package-ecosystem: npm
     directory: /
     schedule: { interval: weekly }

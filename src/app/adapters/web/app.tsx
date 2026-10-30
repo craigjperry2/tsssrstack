@@ -8,7 +8,6 @@ import { readSession } from './session.ts';
 import { authRoutes } from './routes/auth.tsx';
 import { profileRoutes } from './routes/profile.tsx';
 import { taskRoutes } from './routes/tasks.tsx';
-import { bulmaCss, bulmaHref } from './views/layout.tsx';
 
 // The HTTP driving adapter. Security middleware is registered here, once, before every route,
 // so no handler has to remember to opt in.
@@ -28,10 +27,6 @@ export function createWebApp(deps: WebDeps): Hono<WebEnv> {
     await next();
   });
 
-  app.get(bulmaHref, (c) => {
-    c.header('Cache-Control', 'public, max-age=31536000, immutable');
-    return c.body(bulmaCss, 200, { 'Content-Type': 'text/css; charset=utf-8' });
-  });
   // The root is the static directory itself, the only one the process may read, so the /static
   // prefix comes off the request path before serveStatic joins the two.
   app.use(

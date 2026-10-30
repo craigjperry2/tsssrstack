@@ -97,7 +97,7 @@ expectLint(
   [
     [web, "import { Hono } from 'hono';", []],
     [web, "import { jsx } from 'hono/jsx';", []],
-    [web, "import 'bulma/css/bulma.min.css';", []],
+    [web, "import 'sqids/dist/esm/index.js';", []],
     [web, "import { serveStatic } from '@hono/node-server/serve-static';", []],
     [web, "import x from '@hono/other';", [layers]],
     [web, "import x from 'honox';", [layers]],
@@ -107,7 +107,7 @@ expectLint(
     [web, "import { Db } from '#persistence/client.ts';", [layers]],
     [domain, "import { Hono } from 'hono';", [layers]],
   ],
-  architecturePlugin(['hono', 'bulma', '@hono/node-server']),
+  architecturePlugin(['hono', 'sqids', '@hono/node-server']),
 );
 
 // The default export reads the repository's own package.json.
