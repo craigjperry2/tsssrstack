@@ -10,9 +10,9 @@ export const Layout: FC<{ title: string; version: string; children: Child }> = (
       <meta charSet='utf-8' />
       <meta name='viewport' content='width=device-width, initial-scale=1' />
       <title>{title}</title>
-      <link rel='stylesheet' href='/static/vendor/oat-1.0.0.min.css' />
+      <link rel='stylesheet' href='/static/vendor/oat-1.1.0.min.css' />
       <link rel='stylesheet' href='/static/app.css' />
-      <script src='/static/vendor/oat-1.0.0.min.js' defer></script>
+      <script src='/static/vendor/oat-1.1.0.min.js' defer></script>
     </head>
     <body>
       <main class='container'>{children}</main>
