@@ -2,7 +2,7 @@
 
 | Asset               | Upstream                                   | Version / revision                                    | License |
 | ------------------- | ------------------------------------------ | ----------------------------------------------------- | ------- |
-| `datastar-1.0.4.js` | https://github.com/starfederation/datastar | `v1.0.4` (release tag), file `bundles/datastar.js`    | MIT     |
+| `datastar-1.0.5.js` | https://github.com/starfederation/datastar | `v1.0.5` (release tag), file `bundles/datastar.js`    | MIT     |
 | `oat-1.0.0.min.css` | https://github.com/knadh/oat               | `1.0.0` (npm `@knadh/oat`), file `oat.min.css`        | MIT     |
 | `oat-1.0.0.min.js`  | https://github.com/knadh/oat               | `1.0.0` (npm `@knadh/oat`), file `oat.min.js`         | MIT     |
 

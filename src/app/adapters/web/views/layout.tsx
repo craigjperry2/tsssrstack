@@ -19,7 +19,7 @@ export const Layout: FC<{ title: string; version: string; children: Child }> = (
       <footer class='container align-center text-light'>
         <small>Version {version}</small>
       </footer>
-      <script type='module' src='/static/vendor/datastar-1.0.4.js'></script>
+      <script type='module' src='/static/vendor/datastar-1.0.5.js'></script>
     </body>
   </html>
 );
